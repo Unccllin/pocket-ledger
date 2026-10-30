@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
@@ -39,15 +39,30 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Android SDK packages
+      # ubuntu-24.04 already ships the Android SDK. Do not use
+      # android-actions/setup-android: it failed on this runner before doing any
+      # work, and installing only what is missing is both shorter and stabler.
+      - name: Android SDK and NDK
         run: |
-          yes | sdkmanager --install \
-            "platforms;android-36" "build-tools;36.0.0" \
-            "ndk;27.2.12479018"
-          NDK_DIR="$ANDROID_SDK_ROOT/ndk/27.2.12479018"
-          echo "ANDROID_NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ ! -d "$SDK" ]; then
+            echo "::error::no Android SDK on this runner"
+            exit 1
+          fi
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          SDKM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKM" ]; then
+            SDKM=$(command -v sdkmanager || true)
+          fi
+          if [ ! -x "$SDKM" ]; then
+            echo "::error::sdkmanager not found"
+            exit 1
+          fi
+          yes | "$SDKM" --licenses >/dev/null 2>&1 || true
+          "$SDKM" --install "platforms;android-36" \
+            "build-tools;36.0.0" "ndk;27.2.12479018"
+          echo "ANDROID_NDK_HOME=$SDK/ndk/27.2.12479018" >> "$GITHUB_ENV"
 
       - name: cargo-ndk
         run: cargo install cargo-ndk --version 4.1.2 --locked
