@@ -388,6 +388,15 @@ fn read_digits(bytes: &[u8], at: &mut usize, max: usize) -> Option<u32> {
     (*at > start).then_some(value)
 }
 
+/// The M-Pesa transaction code in the text, if there is one.
+///
+/// Used as the idempotency key for the job queue, so it is available without a
+/// full [`parse`].
+#[must_use]
+pub fn transaction_code(raw: &str) -> Option<String> {
+    extract_code(&normalise(raw)).map(str::to_owned)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -503,6 +512,13 @@ mod tests {
         let tx = parse(SENT).expect("sent message parses");
         assert!(!tx.counterparty.chars().any(|c| c.is_ascii_digit()));
         assert_eq!(tx.reference, None);
+    }
+
+    #[test]
+    fn transaction_code_is_available_without_a_full_parse() {
+        assert_eq!(transaction_code(SENT), Some("SJA1B2C3D4".to_owned()));
+        assert_eq!(transaction_code("Confirmed. Ksh1.00 sent."), None);
+        assert_eq!(transaction_code("JOHN: see you at 5"), None);
     }
 
     #[test]

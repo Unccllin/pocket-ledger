@@ -113,6 +113,23 @@ impl CivilTime {
         days * 86_400 + i64::from(self.hour) * 3_600 + i64::from(self.minute) * 60
             - EAT_OFFSET_SECONDS
     }
+
+    /// Reads a Unix timestamp back as East Africa Time, if it is representable.
+    #[must_use]
+    pub fn from_unix_seconds(unix_seconds: i64) -> Option<Self> {
+        let local = unix_seconds.checked_add(EAT_OFFSET_SECONDS)?;
+        let days = local.div_euclid(86_400);
+        let seconds_of_day = local.rem_euclid(86_400);
+        let (year, month, day) = civil_from_days(days);
+        Self::new(
+            year,
+            month,
+            day,
+            u8::try_from(seconds_of_day / 3_600).ok()?,
+            u8::try_from((seconds_of_day % 3_600) / 60).ok()?,
+        )
+        .ok()
+    }
 }
 
 impl fmt::Display for CivilTime {
@@ -153,6 +170,31 @@ pub fn days_from_civil(year: i32, month: u8, day: u8) -> i64 {
     let day_of_year = (153 * month_index + 2) / 5 + i64::from(day) - 1;
     let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
     era * 146_097 + day_of_era - 719_468
+}
+
+/// Inverse of [`days_from_civil`].
+#[must_use]
+pub fn civil_from_days(days: i64) -> (i32, u8, u8) {
+    let shifted = days + 719_468;
+    let era = if shifted >= 0 {
+        shifted
+    } else {
+        shifted - 146_096
+    } / 146_097;
+    let day_of_era = shifted - era * 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_index = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_index + 2) / 5 + 1;
+    let month = if month_index < 10 {
+        month_index + 3
+    } else {
+        month_index - 9
+    };
+    let year = if month <= 2 { year + 1 } else { year };
+    (year as i32, month as u8, day as u8)
 }
 
 #[cfg(test)]
@@ -236,5 +278,32 @@ mod tests {
     fn display_is_iso_like() {
         let t = CivilTime::new(2026, 10, 5, 14, 15).unwrap();
         assert_eq!(t.to_string(), "2026-10-05 14:15 EAT");
+    }
+
+    #[test]
+    fn civil_and_days_round_trip() {
+        for days in [-10_000i64, -1, 0, 1, 10_957, 19_782, 20_000] {
+            let (year, month, day) = civil_from_days(days);
+            assert_eq!(
+                days_from_civil(year, month, day),
+                days,
+                "{year}-{month}-{day}"
+            );
+        }
+        assert_eq!(civil_from_days(0), (1970, 1, 1));
+        assert_eq!(civil_from_days(10_957), (2000, 1, 1));
+        assert_eq!(civil_from_days(19_782), (2024, 2, 29));
+    }
+
+    #[test]
+    fn unix_seconds_round_trip() {
+        for unix in [0i64, 946_674_000, 1_709_197_200, 1_791_198_900] {
+            let civil = CivilTime::from_unix_seconds(unix).unwrap();
+            assert_eq!(civil.unix_seconds(), unix, "{civil}");
+        }
+        assert_eq!(
+            CivilTime::from_unix_seconds(1_791_198_900).map(|t| t.to_string()),
+            Some("2026-10-05 14:15 EAT".to_owned())
+        );
     }
 }

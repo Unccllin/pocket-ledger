@@ -1,0 +1,21 @@
+[package]
+name = "ledger-worker"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "Apalis worker, SQLite storage and CLI for pocket-ledger"
+publish = false
+
+[dependencies]
+ledger-core = { path = "../ledger-core" }
+# Pinned exactly: both libraries are pre-1.0 and change between releases.
+apalis = "=1.0.0"
+apalis-sqlite = "=1.0.0"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+sqlx = { version = "=0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }
+tokio = { version = "=1.54.1", features = ["macros", "rt-multi-thread", "signal", "time"] }
+
+[dev-dependencies]
+# Same versions as the library, for tests that inspect Apalis' own tables.
+sqlx = { version = "=0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }

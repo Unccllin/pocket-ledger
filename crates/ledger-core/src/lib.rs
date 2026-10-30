@@ -27,5 +27,5 @@ pub mod time;
 
 pub use categorise::categorise;
 pub use model::{Category, Kind, Transaction};
-pub use parse::{content_hash, looks_like_mpesa, normalise, parse, ParseError};
+pub use parse::{content_hash, looks_like_mpesa, normalise, parse, transaction_code, ParseError};
 pub use time::CivilTime;
