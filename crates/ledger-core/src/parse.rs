@@ -145,13 +145,18 @@ fn extract_code(normalised: &str) -> Option<&str> {
         .find(|token| is_code(token))
 }
 
+/// Real M-Pesa transaction codes are 10 characters: two leading letters
+/// followed by eight alphanumerics, and they always contain digits
+/// (`SJ41H2K9LM`, `SJA1B2C3D4`). Requiring a digit keeps ordinary
+/// 10-character words such as `WITHDRAWAL` from being read as a code.
 fn is_code(token: &str) -> bool {
     let bytes = token.as_bytes();
     bytes.len() == 10
-        && bytes[..3].iter().all(u8::is_ascii_uppercase)
-        && bytes[3..]
+        && bytes[..2].iter().all(u8::is_ascii_uppercase)
+        && bytes[2..]
             .iter()
             .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
+        && bytes.iter().any(u8::is_ascii_digit)
 }
 
 fn classify(after_confirmed: &str) -> Option<Kind> {
@@ -249,8 +254,14 @@ fn counterparty(kind: Kind, after_confirmed: &str) -> Result<(String, Option<Str
         Kind::Withdraw => {
             let rest =
                 after_verb(after_confirmed, &[" from "]).ok_or(ParseError::MissingCounterparty)?;
-            let end =
-                find_ci(rest, " new m-pesa balance").ok_or(ParseError::MissingCounterparty)?;
+            // "withdrawn from 123456 - AGENT NAME on 5/10/26" (current wording)
+            // and "from 123456 - AGENT NAME New M-PESA balance is ..." (older)
+            // must both stop before the date or before the balance sentence.
+            let end = [find_ci(rest, " on "), find_ci(rest, " new m-pesa balance")]
+                .into_iter()
+                .flatten()
+                .min()
+                .ok_or(ParseError::MissingCounterparty)?;
             let agent = sanitise_name(&rest[..end]);
             match agent.split_once(" - ") {
                 // Real format: "from <agent number> - <agent name>".
@@ -512,6 +523,51 @@ mod tests {
         let tx = parse(SENT).expect("sent message parses");
         assert!(!tx.counterparty.chars().any(|c| c.is_ascii_digit()));
         assert_eq!(tx.reference, None);
+    }
+
+    #[test]
+    fn accepts_real_mpesa_code_shapes() {
+        // Real codes start with two letters and then mix digits; the fixture
+        // shape (three letters) is not the only one in the wild.
+        let raw = "SJ41H2K9LM Confirmed. Ksh1,000.00 sent to JOHN DOE 254712345678 on 5/10/26 at 2:15 PM. New M-PESA balance is Ksh2,345.67. Transaction cost, Ksh0.00.";
+        let tx = parse(raw).expect("real code shape parses");
+        assert_eq!(tx.code, "SJ41H2K9LM");
+        assert_eq!(
+            tx.counterparty, "JOHN DOE",
+            "254-prefixed msisdn must be dropped"
+        );
+        assert_eq!(tx.amount_cents, 100_000);
+        assert_eq!(tx.balance_cents, Some(234_567));
+
+        assert_eq!(transaction_code(raw).as_deref(), Some("SJ41H2K9LM"));
+        // A ten-letter word is not a code.
+        assert_eq!(
+            transaction_code("Confirmed. WITHDRAWAL done on 5/10/26 at 2:15 PM."),
+            None
+        );
+    }
+
+    #[test]
+    fn withdraw_with_current_wording_ignores_the_date() {
+        // Current messages read "KshX withdrawn from <agent> on <date>"; the
+        // counterparty must not swallow the date.
+        let raw = "SJ41H2K9LM Confirmed. Ksh2,000.00 withdrawn from 123456 - AGENT NAME on 5/10/26 at 4:00 PM New M-PESA balance is Ksh445.67. Transaction cost, Ksh28.00.";
+        let tx = parse(raw).expect("withdrawn wording parses");
+        assert_eq!(tx.kind, Kind::Withdraw);
+        assert_eq!(tx.counterparty, "AGENT NAME");
+        assert_eq!(tx.reference.as_deref(), Some("123456"));
+        assert_eq!(tx.amount_cents, 200_000);
+        assert_eq!(tx.cost_cents, 2_800);
+        assert_eq!(tx.occurred_at.hour, 16);
+    }
+
+    #[test]
+    fn received_with_254_prefix_is_clean() {
+        let raw = "SJ41H2K9LM Confirmed. You have received Ksh500.00 from JANE DOE 254712345678 on 5/10/26 at 2:15 PM. New M-PESA balance is Ksh2,845.67.";
+        let tx = parse(raw).expect("received 254 parses");
+        assert_eq!(tx.kind, Kind::Received);
+        assert_eq!(tx.counterparty, "JANE DOE");
+        assert_eq!(tx.balance_cents, Some(284_567));
     }
 
     #[test]
