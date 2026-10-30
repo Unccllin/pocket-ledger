@@ -7,14 +7,17 @@
 //! ledger-worker [--root DIR] run [--delay-ms N]
 //! ```
 //!
-//! The database always lives at `<root>/ledger.db`.
+//! `run` hands the process to Rivium's process host, which owns start-up,
+//! readiness, signal handling and graceful shutdown. Everything else is a
+//! one-shot command against the same SQLite file.
 
 use std::error::Error;
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use ledger_worker::{EnqueueOutcome, WorkerSettings};
+use ledger_worker::{EnqueueOutcome, LedgerApp};
 use serde_json::json;
 
 const USAGE: &str = "\
@@ -27,8 +30,11 @@ USAGE:
     ledger-worker [--root DIR] run [--delay-ms N]
 
 OPTIONS:
-    --root DIR      Working directory for ledger.db (default: target/dev)
+    --root DIR      Working directory for ledger.db and logs (default: target/dev)
     --delay-ms N    Artificial per-job delay for the persistence scenario
+
+`run` is a Rivium service, so it also accepts Rivium's flags:
+    --set KEY=VALUE, --config FILE, default-config, check-config, --help, --version
 
 The database is <root>/ledger.db. No network calls are ever made.";
 
@@ -45,10 +51,10 @@ struct Cli {
     command: Command,
 }
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    match run().await {
-        Ok(()) => ExitCode::SUCCESS,
+fn main() -> ExitCode {
+    let raw_args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    match dispatch(raw_args) {
+        Ok(code) => ExitCode::from(code),
         Err(error) => {
             eprintln!("error: {error}");
             ExitCode::FAILURE
@@ -56,13 +62,34 @@ async fn main() -> ExitCode {
     }
 }
 
-async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
-    let cli = Cli::parse(std::env::args().skip(1))?;
+/// Entry point shared by the CLI commands.
+///
+/// `run` is handed to Rivium before any Tokio runtime exists: Rivium's process
+/// host owns its own runtime, and building one inside another panics.
+fn dispatch(raw_args: Vec<OsString>) -> Result<u8, Box<dyn Error + Send + Sync>> {
+    let cli = Cli::parse(
+        raw_args
+            .iter()
+            .map(|arg| arg.to_string_lossy().into_owned()),
+    )?;
+
     if matches!(cli.command, Command::Help) {
         println!("{USAGE}");
-        return Ok(());
+        return Ok(0);
+    }
+    if let Command::Run { delay_ms } = cli.command {
+        // Rivium parses its own arguments and owns the process from here.
+        let args = rivium_args(&raw_args, delay_ms);
+        return Ok(rivium_host::process::run_args::<LedgerApp>(args).exit());
     }
 
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(run_command(cli))
+}
+
+async fn run_command(cli: Cli) -> Result<u8, Box<dyn Error + Send + Sync>> {
     let db_path = ledger_worker::db_path(&cli.root);
     let pool = ledger_worker::open(&db_path).await?;
 
@@ -98,21 +125,37 @@ async fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
             let stats = ledger_worker::stats(&pool).await?;
             println!("{}", serde_json::to_string_pretty(&stats)?);
         }
-        Command::Run { delay_ms } => {
-            let recovered = ledger_worker::recover_orphans(&pool).await?;
-            eprintln!(
-                "worker ready: db={} recovered_jobs={recovered} delay_ms={delay_ms}",
-                db_path.display()
-            );
-            ledger_worker::run_worker(pool, WorkerSettings { delay_ms }, async {
-                let _ = tokio::signal::ctrl_c().await;
-            })
-            .await?;
-            eprintln!("worker stopped");
+        Command::Run { .. } | Command::Help => {
+            unreachable!("handled before the database is opened")
         }
-        Command::Help => unreachable!("help returns before opening the database"),
     }
-    Ok(())
+    Ok(0)
+}
+
+/// Rewrites our CLI arguments into arguments Rivium understands.
+///
+/// The `run` subcommand is ours, not Rivium's, and `--delay-ms` is translated
+/// into Rivium's own `--set delay_ms=...` override so the value lands in
+/// [`LedgerConfig`](ledger_worker::LedgerConfig) like any other setting.
+fn rivium_args(raw_args: &[OsString], delay_ms: u64) -> Vec<OsString> {
+    let mut args = Vec::with_capacity(raw_args.len() + 2);
+    let mut skipping_delay_value = false;
+    for arg in raw_args {
+        if skipping_delay_value {
+            skipping_delay_value = false;
+            continue;
+        }
+        match arg.to_str() {
+            Some("run") => {}
+            Some("--delay-ms") => skipping_delay_value = true,
+            _ => args.push(arg.clone()),
+        }
+    }
+    if delay_ms > 0 {
+        args.push(OsString::from("--set"));
+        args.push(OsString::from(format!("delay_ms={delay_ms}")));
+    }
+    args
 }
 
 fn report_filtered(outcome: &EnqueueOutcome) {
@@ -180,17 +223,18 @@ impl Cli {
                 }
                 "stats" => command = Some(Command::Stats),
                 "run" => {
+                    // Everything after `run` belongs to Rivium (--root, --set,
+                    // --config, check-config, --help, ...). We only lift out our
+                    // own --delay-ms so it can be translated into --set.
                     let mut delay_ms = 0u64;
-                    while let Some(flag) = args.next() {
-                        match flag.as_str() {
-                            "--delay-ms" => {
-                                delay_ms = args
-                                    .next()
-                                    .ok_or("--delay-ms needs a value")?
-                                    .parse()
-                                    .map_err(|error| format!("bad --delay-ms: {error}"))?;
-                            }
-                            other => return Err(format!("unexpected argument for run: {other}")),
+                    let mut rest = args.by_ref().peekable();
+                    while let Some(flag) = rest.next() {
+                        if flag == "--delay-ms" {
+                            delay_ms = rest
+                                .next()
+                                .ok_or("--delay-ms needs a value")?
+                                .parse()
+                                .map_err(|error| format!("bad --delay-ms: {error}"))?;
                         }
                     }
                     command = Some(Command::Run { delay_ms });
@@ -245,5 +289,34 @@ Not a transaction.
     fn rejects_unknown_arguments() {
         assert!(Cli::parse(["nonsense".to_owned()].into_iter()).is_err());
         assert!(Cli::parse(std::iter::empty()).is_err());
+    }
+
+    #[test]
+    fn rewrites_arguments_for_rivium() {
+        let raw: Vec<OsString> = ["--root", "target/dev3", "run", "--delay-ms", "3000"]
+            .iter()
+            .map(|s| OsString::from(*s))
+            .collect();
+        let rewritten: Vec<String> = rivium_args(&raw, 3000)
+            .iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(
+            rewritten,
+            vec!["--root", "target/dev3", "--set", "delay_ms=3000"]
+        );
+    }
+
+    #[test]
+    fn no_delay_means_no_set_override() {
+        let raw: Vec<OsString> = ["run", "--root", "target/dev"]
+            .iter()
+            .map(|s| OsString::from(*s))
+            .collect();
+        let rewritten: Vec<String> = rivium_args(&raw, 0)
+            .iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(rewritten, vec!["--root", "target/dev"]);
     }
 }

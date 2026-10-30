@@ -65,8 +65,10 @@ where
         .backend(backend)
         .data(pool.clone())
         .data(settings)
-        .retry(RetryPolicy::retries(MAX_ATTEMPTS - 1))
+        // Apalis asks for concurrency before retries so a retry does not take
+        // an extra concurrency slot.
         .concurrency(2)
+        .retry(RetryPolicy::retries(MAX_ATTEMPTS - 1))
         .build(handle);
 
     worker
