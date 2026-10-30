@@ -71,6 +71,12 @@
     transition: background 120ms ease;
   }
   .btn:hover { background: #12523a; }
+  .btn.secondary {
+    background: var(--surface); color: var(--forest);
+    border: 1px solid var(--forest); min-height: 54px; font-size: 16px;
+    margin-top: 14px;
+  }
+  .btn.secondary:hover { background: #E3EFE6; }
   .btn:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; }
   .meta { margin: 12px 0 0; text-align: center; font-size: 14px; color: var(--muted); }
   .warn {
@@ -203,11 +209,13 @@
 
   <h2>Updates</h2>
   <div class="card">
-    <p style="margin:0 0 8px">Pocket Ledger has no network permission, so it cannot
-      check for updates itself. Either come back to this page, or let
-      <a href="https://github.com/ImranR98/Obtainium">Obtainium</a> do it:
-      add <code>https://github.com/Unccllin/pocket-ledger</code> as a source and it
-      installs new releases over the old one.</p>
+    <p style="margin:0 0 4px">Pocket Ledger has no network permission, so it cannot
+      check for updates itself. Either come back to this page, or let Obtainium watch
+      this repository's releases and install each new version over the old one.</p>
+    <a class="btn secondary" href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fadd%2Fhttps%3A%2F%2Fgithub.com%2FUnccllin%2Fpocket-ledger">Add to Obtainium</a>
+    <p class="meta">No Obtainium yet?
+      <a href="https://github.com/ImranR98/Obtainium/releases">Get it from GitHub</a>,
+      then tap the button again.</p>
   </div>
 
   <p class="privacy">

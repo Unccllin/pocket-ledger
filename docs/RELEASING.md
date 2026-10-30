@@ -73,19 +73,19 @@ pocket-ledger -> Package settings** after the first push (private by default).
    Install it on a device before tagging when the change touches the app.
 4. Commit, tag, push:
    ```sh
-   git commit -am "release: v0.3.0"
-   git tag -a v0.3.0 -m "pocket-ledger 0.3.0"
+   git commit -am "release: v0.3.1"
+   git tag -a v0.3.1 -m "pocket-ledger 0.3.1"
    git push origin master --tags
    ```
 5. Watch the two workflows. `release` attaches the APK and checksums to the
-   GitHub Release; `package` publishes `ghcr.io/<owner>/pocket-ledger:0.3.0`
+   GitHub Release; `package` publishes `ghcr.io/<owner>/pocket-ledger:0.3.1`
    (plus `0.3` and, on `master`, `latest`).
 6. Verify from the outside:
    ```sh
-   curl -L -o app.apk https://github.com/Unccllin/pocket-ledger/releases/latest/download/pocket-ledger-0.3.0.apk
+   curl -L -o app.apk https://github.com/Unccllin/pocket-ledger/releases/latest/download/pocket-ledger-0.3.1.apk
    sha256sum app.apk                      # compare with SHA256SUMS.txt
    apksigner verify --print-certs app.apk # digest e1588e0a...7fcc
-   docker run --rm ghcr.io/unccllin/pocket-ledger:0.3.0 --help
+   docker run --rm ghcr.io/unccllin/pocket-ledger:0.3.1 --help
    ```
 
 ## Manual fallback (no CI secrets)

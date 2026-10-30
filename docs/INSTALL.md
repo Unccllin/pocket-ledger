@@ -27,7 +27,7 @@ outside Play.
    expected for any sideloaded app.
 4. Optionally verify the download first:
    ```sh
-   sha256sum pocket-ledger-0.3.0.apk
+   sha256sum pocket-ledger-0.3.1.apk
    # compare with SHA256SUMS.txt on the release page
    ```
 5. Open **Pocket Ledger**. The first screen explains Notification Access; tap
@@ -52,7 +52,7 @@ allowlist, so a warning is normal. On Samsung phones (One UI 6.1 and newer)
 4. Allow installs from the app you opened the APK with (Files, Chrome, ...) when
    Android asks.
 
-After installing, check **Settings -> Apps -> Pocket Ledger** shows version 0.3.0,
+After installing, check **Settings -> Apps -> Pocket Ledger** shows version 0.3.1,
 and optionally compare the checksum and certificate above.
 
 There is no way to make a sideloaded, self-signed APK trusted by Play Protect
@@ -88,7 +88,7 @@ Every release page includes `SHA256SUMS.txt`. You can also check the signing
 certificate on a downloaded APK:
 
 ```sh
-apksigner verify --print-certs pocket-ledger-0.3.0.apk
+apksigner verify --print-certs pocket-ledger-0.3.1.apk
 # Signer #1 certificate SHA-256 digest:
 # e1588e0a325a276679f85b1a859a808ff045135013ffe1599a0857a1b6ea7fcc
 ```
@@ -111,8 +111,8 @@ Maintainers publish with a tag, which runs the `release` workflow and attaches
 the signed APK and checksums to the GitHub Release:
 
 ```sh
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 The workflow needs the four signing secrets listed at the top of

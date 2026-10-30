@@ -27,8 +27,7 @@ Everything stays on the phone. The app has no `INTERNET` permission at all.
    with waiting and needs-review states), two home screen widgets, and a result
    notification such as `Spent Ksh 350 at Java House` / `Food · 53% of daily limit used`.
 
-One job type, no scope creep. The test button in Settings is a debug aid; the real
-trigger is an incoming notification.
+One job type, no scope creep. The only trigger is an incoming notification.
 
 ## Demo
 
@@ -190,8 +189,9 @@ cargo run -p ledger-worker -- --root target/dev stats
 
 `today_spend_cents` is `0` for the fixtures on purpose: they are dated `5/10/26`, and
 the figure only counts transactions whose message timestamp falls inside today's
-East Africa Time window. **Send a test message** in Diagnostics generates a message dated
-today, so the widget moves.
+East Africa Time window. To watch the widget move without a phone, post a
+confirmation dated today with `adb shell cmd notification post` (see the Android
+section), or use the laptop `ingest` command above.
 
 `run` is a Rivium process host, so it also accepts `check-config`, `default-config`,
 `--config FILE` and `--set key=value`. `--delay-ms N` is a laptop-only debug knob that
@@ -239,7 +239,7 @@ Screens: **Home** (date, title, forest hero with today's total and the daily-lim
 the amber waiting strip when jobs are queued, the top three categories, three latest
 rows), **Activity** (All/Spent/Received/Review filters, day headings, and the three row
 states: done, waiting, needs review) and **Settings** (daily limit, notification access,
-the test message, stopping the service, worker version). Row taps open a details sheet
+stopping the service, worker version). Row taps open a details sheet
 with the transaction code, the balance after, and the original message behind **Show
 original** (phone numbers masked). A needs-review row opens the review sheet with
 **Retry** and **Ignore**; nothing is ever deleted.
