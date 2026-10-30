@@ -3,6 +3,7 @@ package com.pocketledger
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import com.pocketledger.widget.Widgets
 
 /**
  * The real feature: M-Pesa confirmations become ledger rows.
@@ -52,7 +53,7 @@ class MpesaListener : NotificationListenerService() {
             } else {
                 // Filtered (not M-Pesa after all) or an error: still refresh the
                 // widget so the queue count stays honest.
-                LedgerWidget.refresh(context)
+                Widgets.refresh(context)
             }
         }.start()
     }

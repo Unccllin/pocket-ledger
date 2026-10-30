@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="window_background">#FAF8F4</color>
+    <!-- Window background only: every other colour lives in Compose (design/Color.kt). -->
+    <color name="window_background">#F4F7F2</color>
+    <!-- Widget colours, also mirrors of the Compose tokens. -->
+    <color name="forest">#0F3D2B</color>
+    <color name="mint_text">#BFE3CC</color>
+    <color name="amber">#E8A33D</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="line">#DCE5DE</color>
+    <color name="ink">#10231B</color>
+    <color name="muted">#5B6B62</color>
+    <color name="green">#14783F</color>
 </resources>

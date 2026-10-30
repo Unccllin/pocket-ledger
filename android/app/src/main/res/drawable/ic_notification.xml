@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar version of the slip: solid white, torn bottom, 24dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M7,2 H17 A2,2 0 0 1 19,4 V15 L17.8,17 L16.6,15 L15.4,17 L14.2,15 L13,17 L11.8,15 L10.6,17 L9.4,15 L8.2,17 L7,15 V4 A2,2 0 0 1 7,2 Z" />
+</vector>

@@ -14,8 +14,8 @@ android {
         // 35 keeps Android 15/16 behaviour opt-ins explicit; the UI is tested
         // on an Android 16 device.
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         ndk {
             // Matches the cargo-ndk targets in the README.
             abiFilters += listOf("arm64-v8a", "x86_64")
@@ -56,6 +56,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.12.4")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

@@ -1,13 +1,125 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">pocket-ledger</string>
+    <string name="app_name">Pocket Ledger</string>
     <string name="listener_label">pocket-ledger M-Pesa listener</string>
 
-    <string name="widget_description">Today\'s M-Pesa spend and queued jobs</string>
-    <string name="widget_spend_label">SPENT TODAY</string>
-    <string name="widget_idle">Queue empty</string>
-    <string name="widget_starting">Starting\u2026</string>
-    <string name="widget_queue">%1$d waiting</string>
-    <string name="widget_queue_failed">%1$d waiting \u00B7 %2$d failed</string>
-    <string name="widget_placeholder">Ksh0.00</string>
+    <!-- Home -->
+    <string name="home_spent_today">Spent today</string>
+    <string name="home_no_payments">No payments yet</string>
+    <string name="home_one_payment">1 payment</string>
+    <string name="home_many_payments">%1$d payments</string>
+    <string name="home_with_balance">%1$s · M-Pesa balance %2$s</string>
+    <string name="home_limit_caption">%1$d%% of your %2$s daily limit</string>
+    <string name="home_where_went">Where it went</string>
+    <string name="home_latest">Latest</string>
+    <string name="home_see_all">See all</string>
+    <string name="home_privacy">Nothing leaves this phone.</string>
+    <string name="home_empty_title">Your M-Pesa payments will appear here automatically.</string>
+    <string name="home_empty_body">The app does not need to be open when a confirmation arrives.</string>
+    <string name="home_empty_body_no_access">Turn on notification access so pocket-ledger can see M-Pesa confirmations.</string>
+    <string name="home_turn_on_access">Turn on notification access</string>
+    <string name="waiting_one">1 message waiting to be read. Works offline.</string>
+    <string name="waiting_many">%1$d messages waiting to be read. Works offline.</string>
+
+    <!-- Notification access banner -->
+    <string name="access_banner_title">Notification access is off</string>
+    <string name="access_banner_body">pocket-ledger cannot see M-Pesa confirmations.</string>
+    <string name="access_turn_on">Turn on</string>
+
+    <!-- Navigation -->
+    <string name="tab_home">Home</string>
+    <string name="tab_activity">Activity</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Activity -->
+    <string name="activity_title">Activity</string>
+    <string name="filter_all">All</string>
+    <string name="filter_spent">Spent</string>
+    <string name="filter_received">Received</string>
+    <string name="filter_review">Review</string>
+    <string name="activity_needs_look">Needs a look</string>
+    <string name="activity_reading_now">Reading now</string>
+    <string name="activity_empty_received">Nothing received yet.</string>
+    <string name="activity_empty_review">Nothing needs a look. Nice.</string>
+    <string name="activity_empty_all">No transactions yet. Your M-Pesa payments will appear here automatically.</string>
+
+    <!-- Rows -->
+    <string name="row_reading_message">Reading message…</string>
+    <string name="row_waiting_in_queue">Waiting in queue</string>
+    <string name="row_amount_pending">Ksh —</string>
+    <string name="row_review_title">Could not read this one</string>
+    <string name="row_review_title_many">%1$d messages need a look</string>
+    <string name="row_review_subtitle">Tap to fix or ignore</string>
+    <string name="row_review_action">Review</string>
+
+    <!-- Details and review sheets -->
+    <string name="details_show_original">Show original</string>
+    <string name="details_hide_original">Hide original</string>
+    <string name="details_code">Transaction code</string>
+    <string name="details_balance_after">Balance after</string>
+    <string name="details_close">Done</string>
+    <string name="review_title">Review message</string>
+    <string name="review_body">It looked like M-Pesa, so it was kept instead of dropped.</string>
+    <string name="review_body_more">%1$d messages are waiting their turn.</string>
+    <string name="review_retry">Retry</string>
+    <string name="review_ignore">Ignore</string>
+    <string name="review_tried">Tried %1$d times.</string>
+    <string name="review_tried_one">Tried once.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_daily_limit">Daily limit</string>
+    <string name="settings_limit_label">Ksh per day</string>
+    <string name="settings_limit_help">Only used for the progress bar on Home. Leave empty to hide it.</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_access_title">Notification access</string>
+    <string name="settings_access_on">pocket-ledger reads M-Pesa confirmations.</string>
+    <string name="settings_access_off">Off: no new confirmations can be read.</string>
+    <string name="settings_change">Change</string>
+    <string name="settings_this_device">This device</string>
+    <string name="settings_test_title">Send a test message</string>
+    <string name="settings_test_body">Adds a Ksh 350 Java House payment dated today.</string>
+    <string name="settings_test_action">Send</string>
+    <string name="settings_stop_title">Stop the background service</string>
+    <string name="settings_stop_body">Starts again by itself the next time a message arrives.</string>
+    <string name="settings_stop_action">Stop</string>
+    <string name="settings_worker">Worker</string>
+    <string name="settings_privacy">All data stays on this phone. The app has no internet permission.</string>
+
+    <!-- First run -->
+    <string name="first_run_title">Pocket Ledger</string>
+    <string name="first_run_access_on">Notification access is on. pocket-ledger can read M-Pesa confirmations.</string>
+    <string name="first_run_access_off">pocket-ledger needs Notification Access so it can see M-Pesa confirmations as they arrive.</string>
+    <string name="first_run_point_reads">It reads M-Pesa confirmations. Nothing else.</string>
+    <string name="first_run_point_never">It never reads your other notifications.</string>
+    <string name="first_run_point_privacy">Nothing leaves this phone: no internet permission, no account.</string>
+    <string name="first_run_point_background">Queued messages are read in the background, even when the app is closed.</string>
+    <string name="first_run_open_settings">Open notification access settings</string>
+    <string name="first_run_continue">Continue</string>
+    <string name="first_run_come_back">Then come back here; the app notices as soon as it is granted.</string>
+
+    <!-- Widgets -->
+    <string name="widget_spent_today">Spent today</string>
+    <string name="widget_this_week">This week</string>
+    <string name="widget_no_data">Ksh —</string>
+    <string name="widget_waiting">1 message waiting</string>
+    <string name="widget_no_comparison">No previous week to compare</string>
+    <string name="widget_no_data_yet">No data yet</string>
+    <string name="widget_same_as_last_week">Same as last week</string>
+    <string name="widget_less_than_last_week">%1$d%% less than last week</string>
+    <string name="widget_more_than_last_week">%1$d%% more than last week</string>
+    <string name="widget_waiting_one">1 message waiting</string>
+    <string name="widget_waiting_many">%1$d messages waiting</string>
+    <string name="widget_spent_description">Today\'s M-Pesa spend</string>
+    <string name="widget_week_description">This week\'s M-Pesa spend</string>
+
+    <!-- Result notifications -->
+    <string name="notification_channel">Transactions</string>
+    <string name="notification_channel_description">One line per M-Pesa confirmation.</string>
+    <string name="notification_spent">Spent %1$s at %2$s</string>
+    <string name="notification_received">Received %1$s from %2$s</string>
+    <string name="notification_limit_body">%1$s · %2$d%% of daily limit used</string>
+    <string name="notification_balance_body">%1$s · Balance %2$s</string>
+    <string name="notification_summary_title">%1$d new transactions</string>
+    <string name="notification_summary_body">Tap to see them in Pocket Ledger</string>
 </resources>

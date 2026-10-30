@@ -13,3 +13,6 @@ android/app/src/main/jniLibs/
 
 # Agent harness scratch state, never part of the project.
 .pi/
+
+# Crash dumps (the emulator leaves core.1 behind on QEMU hangs).
+core.*

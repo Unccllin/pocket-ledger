@@ -77,6 +77,28 @@ object LedgerRuntime {
         }
     }
 
+    /** Retry one parked message; returns the native JSON, or null on failure. */
+    fun retryReview(context: Context, id: Long): String? {
+        ensureStarted(context)?.let { return null }
+        return try {
+            Bridge.nativeRetry(id)
+        } catch (error: Throwable) {
+            Log.w(TAG, "nativeRetry failed: ${error.message}")
+            null
+        }
+    }
+
+    /** Ignore one parked message; returns the native JSON, or null on failure. */
+    fun dismissReview(context: Context, id: Long): String? {
+        ensureStarted(context)?.let { return null }
+        return try {
+            Bridge.nativeDismiss(id)
+        } catch (error: Throwable) {
+            Log.w(TAG, "nativeDismiss failed: ${error.message}")
+            null
+        }
+    }
+
     fun errorJson(message: String): String =
         """{"error":${org.json.JSONObject.quote(message)}}"""
 }
