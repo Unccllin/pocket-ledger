@@ -25,9 +25,19 @@ Everything stays on the phone. The app has no `INTERNET` permission at all.
 One job type, no scope creep. The button in the app is a debug aid; the real trigger
 is an incoming notification.
 
+## Demo
+
+![pocket-ledger demo](media/demo.gif)
+
+Recorded on the real phone in **airplane mode**: an M-Pesa confirmation arrives while the
+app is closed and the home screen widget goes from `Ksh940.00` to `Ksh1,030.00` without the
+app ever being opened; the app is then force-stopped and reopened with all five ledger rows
+still in place. The GIF's notification shade is deliberately trimmed: it contained the
+phone owner's personal notifications, which do not belong in a repository.
+
 ## Architecture
 
-```
+```text
 notification ──► MpesaListener (Kotlin, NotificationListenerService)
                      │  shape check in Kotlin, then JNI
                      ▼
@@ -43,7 +53,7 @@ notification ──► MpesaListener (Kotlin, NotificationListenerService)
                      └──► LedgerWidget ──► widget refresh (today's spend, queue)
 ```
 
-```
+```text
 crates/
   ledger-core/     pure Rust: parser, categoriser, domain types (zero dependencies)
   ledger-worker/   Apalis worker + SQLite ledger + Rivium App + laptop CLI
@@ -100,7 +110,7 @@ keeps a job in flight for the persistence scenario below.
 ### Tests
 
 ```sh
-cargo test --workspace     # 57 tests: parser fixtures, dedup, retries, orphan recovery
+cargo test --workspace     # 58 tests: parser fixtures, dedup, retries, orphan recovery
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
 ```
@@ -128,20 +138,27 @@ The Gradle build needs `android/local.properties` with `sdk.dir=/path/to/Android
 
 In the app:
 
-1. Open **pocket-ledger**, tap **Grant Notification Access** and enable the listener.
+1. Open **pocket-ledger**, tap **Grant Notification Access** and enable the listener
+   (or grant it over adb, see below).
 2. Add the **pocket-ledger** widget to the home screen.
 3. Tap **Debug: enqueue a sample M-Pesa message** to check the pipeline, then send a
    real notification (see below) and watch the widget update without opening the app.
+   **Debug: stop the Rust service** exists so on-demand start can be demonstrated.
 
-To simulate an incoming notification over adb (no second phone needed):
+Granting Notification Access and sending a notification over adb, exactly as tested:
 
 ```sh
-adb shell cmd notification post -S bigtext -t "M-PESA" mpesa \
-  "SJA1B2C3D4 Confirmed. Ksh350.00 paid to JAVA HOUSE. on 5/10/26 at 1:00 PM. New M-PESA balance is Ksh684.56. Transaction cost, Ksh0.00."
+# needs the explicit user id, otherwise the command silently does nothing
+adb shell cmd notification allow_listener com.pocketledger/com.pocketledger.MpesaListener 0
+
+# quote the whole device command; without the single quotes the body is truncated
+# and the listener (correctly) rejects it as not M-Pesa shaped. The code must be
+# 3 letters + 7 alphanumerics.
+adb shell "cmd notification post -t 'M-PESA' mpesa 'SJA1B2C3D4 Confirmed. Ksh350.00 paid to JAVA HOUSE. on 5/10/26 at 1:00 PM. New M-PESA balance is Ksh684.56. Transaction cost, Ksh0.00.'"
 ```
 
-Note that Android only delivers notifications to a listener while the listener is
-enabled, and the debug `cmd notification post` path is subject to the same rules.
+Verified on a Samsung SM-A546U1 running Android 16; see `docs/DEVICE_TEST.md` for the
+full log, including the bugs found on the way.
 
 ## How jobs survive app restarts
 
@@ -237,14 +254,9 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 | Gradle | 8.14.6 |
 | Android compileSdk / targetSdk / minSdk | 35 / 35 / 26 |
 | Android build-tools / NDK / platform-tools | 35.0.0 / 27.2.12479018 / 37.0.1 |
-| Test device | see `docs/DEVICE_TEST.md` |
+| Test device | Samsung SM-A546U1, Android 16 (SDK 36), arm64-v8a |
 
 ## Real phone test notes (bonus)
 
 See `docs/DEVICE_TEST.md` for the device model, Android version, what worked, what
 broke and the exact errors observed.
-
-## Demo
-
-`media/demo.gif` (airplane-mode phone, real incoming notification, widget updating,
-force-stop and recovery).
