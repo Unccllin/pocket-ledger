@@ -1,8 +1,24 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+// Release signing is optional: the config only exists when a keystore is
+// supplied, either through android/keystore.properties (never committed) or
+// the PL_* environment variables used by scripts/release.sh and CI.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun signingValue(property: String, environment: String): String? =
+    keystoreProperties.getProperty(property) ?: System.getenv(environment)
+
+val releaseStoreFile = signingValue("storeFile", "PL_KEYSTORE")
+
 
 android {
     namespace = "com.pocketledger"
@@ -22,9 +38,23 @@ android {
         }
     }
 
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = signingValue("storePassword", "PL_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "PL_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "PL_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // R8 stays off: the app is small, and the JNI + Compose boundaries
+            // are not worth a shrinking rule set for a first release.
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

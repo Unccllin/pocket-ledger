@@ -16,3 +16,9 @@ android/app/src/main/jniLibs/
 
 # Crash dumps (the emulator leaves core.1 behind on QEMU hangs).
 core.*
+
+# Release signing material and build outputs, never committed.
+keystore.properties
+*.jks
+*.keystore
+dist/

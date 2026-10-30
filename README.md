@@ -36,6 +36,27 @@ app ever being opened; the app is then force-stopped and reopened with all five 
 still in place. The GIF's notification shade is deliberately trimmed: it contained the
 phone owner's personal notifications, which do not belong in a repository.
 
+## Install on your phone
+
+pocket-ledger is sideloaded from a signed APK - there is no Play listing, which suits an
+app with no account and no `INTERNET` permission.
+
+- Download the latest `pocket-ledger-<version>.apk` from
+  [Releases](https://github.com/Unccllin/pocket-ledger/releases/latest) (Android 8.0+,
+  arm64 phone; the same file also carries an `x86_64` build for emulators, ~45 MB).
+- Tap it, allow installs from your file manager, install, then allow Notification Access
+  on the first screen.
+- Check `SHA256SUMS.txt` from the release page if you want to verify the download; the
+  signing certificate digest is published in [`docs/INSTALL.md`](docs/INSTALL.md) and
+  stays the same across releases.
+
+Build a signed APK yourself with `scripts/release.sh` (it creates the key once, outside
+the repo, at `~/.pocketledger/release.jks` and prints its fingerprint). Maintainers
+publish by pushing a `v*` tag: `.github/workflows/release.yml` builds both Rust ABIs,
+signs the APK with the repository's signing secrets and attaches it plus checksums to
+the GitHub Release. Without those secrets the workflow still produces an unsigned
+artifact and skips the release.
+
 ## Architecture
 
 ```text
@@ -304,8 +325,12 @@ parsing and never stored; a stalled message keeps its raw text only in the local
   engine and the app never blocks a payment.
 - The 0.3 screenshots were captured on an Android 16 x86_64 emulator. `docs/DEVICE_TEST.md`
   holds the separate physical-phone log, which predates the redesign.
-- No release signing, no CI, no Play packaging: this is a challenge entry, not a store
-  app.
+- Release signing is local: the key lives at `~/.pocketledger/release.jks`, outside the
+  repository, and CI reads it from secrets. Lose the key and you cannot ship an update
+  that installs over the old app; keep a backup.
+- No Play Store packaging (an `.aab`), no crash reporting, no update check: the app is
+  deliberately inert without a network. Distribution is the signed APK plus this
+  repository's release workflow.
 
 ## Future ideas
 
@@ -338,6 +363,7 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 | `androidx.activity:activity-compose` | 1.13.0 |
 | Test device | Samsung SM-A546U1, Android 16 (SDK 36), arm64-v8a (0.1.0 pipeline) |
 | Design-pass device | Android 16 (API 36) x86_64 emulator, 1080x2400 @420dpi, KVM |
+| Release signing | RSA-4096, certificate SHA-256 `e1588e0a325a276679f85b1a859a808ff045135013ffe1599a0857a1b6ea7fcc` |
 | Typeface | Plus Jakarta Sans (variable, SIL OFL, bundled in `res/font/`) |
 
 ## Real phone test notes (bonus)

@@ -1,0 +1,117 @@
+---
+name: release
+
+# Builds a signed APK and attaches it to the GitHub Release for a v* tag.
+#
+# Signing secrets (Settings -> Secrets -> Actions):
+#   ANDROID_KEYSTORE_BASE64   base64 of ~/.pocketledger/release.jks
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS         (pocketledger)
+#   ANDROID_KEY_PASSWORD
+#
+# Without those secrets the workflow still builds, but produces an *unsigned*
+# APK artifact and skips the Release, so forks can run it without a key.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Android SDK packages
+        run: |
+          yes | sdkmanager --install \
+            "platforms;android-36" "build-tools;36.0.0" \
+            "ndk;27.2.12479018"
+          NDK_DIR="$ANDROID_SDK_ROOT/ndk/27.2.12479018"
+          echo "ANDROID_NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+
+      - name: cargo-ndk
+        run: cargo install cargo-ndk --version 4.1.2 --locked
+
+      - name: Rust libraries
+        run: |
+          cargo ndk -t arm64-v8a -t x86_64 \
+            -o android/app/src/main/jniLibs build -p ledger-jni --release
+
+      - name: Unpack the release key
+        if: env.KEYSTORE_B64 != ''
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          {
+            echo "PL_KEYSTORE=$RUNNER_TEMP/release.jks"
+            echo "PL_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "PL_KEY_ALIAS=$KEY_ALIAS"
+            echo "PL_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Build the APK
+        working-directory: android
+        run: ./gradlew --stacktrace assembleRelease
+
+      - name: Collect APK and checksums
+        id: apk
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' \
+            android/app/build.gradle.kts | head -1)
+          RELEASE=android/app/build/outputs/apk/release
+          APK="$RELEASE/app-release.apk"
+          mkdir -p dist
+          if [ -f "$APK" ]; then
+            cp "$APK" "dist/pocket-ledger-${VERSION}.apk"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            UNSIGNED="$RELEASE/app-release-unsigned.apk"
+            NAME="pocket-ledger-${VERSION}-unsigned.apk"
+            cp "$UNSIGNED" "dist/$NAME"
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No signing secrets; APK is unsigned."
+          fi
+          (cd dist && sha256sum ./*.apk > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocket-ledger-${{ steps.apk.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+
+      - name: Attach to the GitHub Release
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') &&
+          steps.apk.outputs.signed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/pocket-ledger-*.apk
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
+          fail_on_unmatched_files: true
