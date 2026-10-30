@@ -87,6 +87,32 @@ pub struct LedgerRow {
     pub counterparty: String,
     /// Transaction time as Unix seconds.
     pub occurred_at: i64,
+    /// M-Pesa balance after this transaction, when the message stated one.
+    pub balance_cents: Option<i64>,
+    /// The original message with phone numbers masked, for the details sheet.
+    pub raw_text: Option<String>,
+}
+
+/// One category's total for today, largest first.
+#[derive(Debug, Clone, Serialize)]
+pub struct CategoryTotal {
+    /// Category tag, e.g. `food`.
+    pub category: String,
+    /// Amount spent in this category today, amount plus cost.
+    pub amount_cents: i64,
+}
+
+/// One message parked for review: it looked like M-Pesa but did not parse.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReviewItem {
+    /// Row id, used by the retry and ignore actions.
+    pub id: i64,
+    /// The original message exactly as it arrived.
+    pub raw_text: String,
+    /// How many parse attempts have failed.
+    pub attempts: i64,
+    /// When this message was first seen, Unix seconds.
+    pub first_seen: i64,
 }
 
 /// Everything the widget, the result notification and the CLI need in one call.
@@ -98,6 +124,16 @@ pub struct Stats {
     pub today_spend_cents: i64,
     /// Money received today (EAT).
     pub today_income_cents: i64,
+    /// How many payments were made today (received money is not a payment).
+    pub today_payment_count: i64,
+    /// Latest M-Pesa balance the phone has seen, if any message stated one.
+    pub balance_cents: Option<i64>,
+    /// Today's spending grouped by category, largest first, at most three.
+    pub top_categories: Vec<CategoryTotal>,
+    /// Spend over the last seven EAT days, including today.
+    pub week_spend_cents: i64,
+    /// Spend over the seven EAT days before that.
+    pub prev_week_spend_cents: i64,
     /// Jobs waiting to be processed.
     ///
     /// Apalis reserves work as `Queued` (locked by a worker) and leaves
@@ -110,6 +146,8 @@ pub struct Stats {
     pub failed_jobs: i64,
     /// Messages parked for review in the `unparsed` table.
     pub unparsed: i64,
+    /// The messages waiting in the review flow, newest first.
+    pub review: Vec<ReviewItem>,
     /// Most recent ledger rows, newest first.
     pub latest: Vec<LedgerRow>,
 }
@@ -175,6 +213,39 @@ pub async fn init_schema(pool: &SqlitePool) -> Result<(), StoreError> {
     ] {
         sqlx::query(statement).execute(pool).await?;
     }
+    // Additive migrations for databases created by 0.1.0/0.2.0.
+    ensure_column(pool, "ledger", "raw_text", "raw_text TEXT").await?;
+    ensure_column(
+        pool,
+        "unparsed",
+        "dismissed",
+        "dismissed INTEGER NOT NULL DEFAULT 0",
+    )
+    .await?;
+    Ok(())
+}
+
+/// Adds a column only when the table does not have it yet.
+async fn ensure_column(
+    pool: &SqlitePool,
+    table: &str,
+    column: &str,
+    definition: &str,
+) -> Result<(), StoreError> {
+    let columns: Vec<String> =
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!("PRAGMA table_info({table})")))
+            .fetch_all(pool)
+            .await?
+            .into_iter()
+            .map(|row| row.get::<String, _>("name"))
+            .collect();
+    if !columns.iter().any(|name| name == column) {
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "ALTER TABLE {table} ADD COLUMN {definition}"
+        )))
+        .execute(pool)
+        .await?;
+    }
     Ok(())
 }
 
@@ -211,13 +282,17 @@ pub async fn enqueue(
 ///
 /// Returns `true` when a new row was written and `false` when the code was
 /// already known, which is how idempotency is enforced at the ledger level.
-pub async fn insert_transaction(pool: &SqlitePool, tx: &Transaction) -> Result<bool, StoreError> {
+pub async fn insert_transaction(
+    pool: &SqlitePool,
+    tx: &Transaction,
+    raw_text: &str,
+) -> Result<bool, StoreError> {
     let category = categorise(tx);
     let result = sqlx::query(
         "INSERT INTO ledger
             (code, kind, category, amount_cents, counterparty, reference,
-             balance_cents, cost_cents, occurred_at, raw_hash, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+             balance_cents, cost_cents, occurred_at, raw_hash, created_at, raw_text)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
          ON CONFLICT(code) DO NOTHING",
     )
     .bind(&tx.code)
@@ -231,6 +306,7 @@ pub async fn insert_transaction(pool: &SqlitePool, tx: &Transaction) -> Result<b
     .bind(tx.occurred_at.unix_seconds())
     .bind(&tx.raw_hash)
     .bind(now_unix())
+    .bind(ledger_core::redact_phone_numbers(raw_text))
     .execute(pool)
     .await?;
     Ok(result.rows_affected() == 1)
@@ -288,7 +364,8 @@ pub async fn recover_orphans(pool: &SqlitePool) -> Result<u64, StoreError> {
     Ok(result.rows_affected())
 }
 
-/// Current ledger and queue state.
+/// Current ledger and queue state: everything the home screen, the activity
+/// list and the widgets read, in one round trip.
 pub async fn stats(pool: &SqlitePool) -> Result<Stats, StoreError> {
     let ledger_rows: i64 = sqlx::query("SELECT COUNT(*) FROM ledger")
         .fetch_one(pool)
@@ -314,6 +391,60 @@ pub async fn stats(pool: &SqlitePool) -> Result<Stats, StoreError> {
     .fetch_one(pool)
     .await?
     .get(0);
+    let today_payment_count: i64 = sqlx::query(
+        "SELECT COUNT(*) FROM ledger
+         WHERE occurred_at >= ?1 AND occurred_at < ?2 AND kind != 'received'",
+    )
+    .bind(today_start)
+    .bind(today_end)
+    .fetch_one(pool)
+    .await?
+    .get(0);
+
+    let balance_cents: Option<i64> = sqlx::query(
+        "SELECT balance_cents FROM ledger WHERE balance_cents IS NOT NULL
+         ORDER BY occurred_at DESC, id DESC LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await?
+    .map(|row| row.get::<i64, _>("balance_cents"));
+
+    let top_categories = sqlx::query(
+        "SELECT category, SUM(amount_cents + cost_cents) AS total FROM ledger
+         WHERE occurred_at >= ?1 AND occurred_at < ?2 AND kind != 'received'
+         GROUP BY category ORDER BY total DESC, category ASC LIMIT 3",
+    )
+    .bind(today_start)
+    .bind(today_end)
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| CategoryTotal {
+        category: row.get::<String, _>("category"),
+        amount_cents: row.get::<i64, _>("total"),
+    })
+    .collect();
+
+    let week_start = today_start - 6 * 86_400;
+    let prev_week_start = week_start - 7 * 86_400;
+    let week_spend_cents: i64 = sqlx::query(
+        "SELECT COALESCE(SUM(amount_cents + cost_cents), 0) FROM ledger
+         WHERE occurred_at >= ?1 AND occurred_at < ?2 AND kind != 'received'",
+    )
+    .bind(week_start)
+    .bind(today_end)
+    .fetch_one(pool)
+    .await?
+    .get(0);
+    let prev_week_spend_cents: i64 = sqlx::query(
+        "SELECT COALESCE(SUM(amount_cents + cost_cents), 0) FROM ledger
+         WHERE occurred_at >= ?1 AND occurred_at < ?2 AND kind != 'received'",
+    )
+    .bind(prev_week_start)
+    .bind(week_start)
+    .fetch_one(pool)
+    .await?
+    .get(0);
 
     let queued_jobs = count_jobs(
         pool,
@@ -330,13 +461,29 @@ pub async fn stats(pool: &SqlitePool) -> Result<Stats, StoreError> {
         "SELECT COUNT(*) FROM Jobs WHERE job_type = ?1 AND status IN ('Failed', 'Killed')",
     )
     .await?;
-    let unparsed: i64 = sqlx::query("SELECT COUNT(*) FROM unparsed")
+    let unparsed: i64 = sqlx::query("SELECT COUNT(*) FROM unparsed WHERE dismissed = 0")
         .fetch_one(pool)
         .await?
         .get(0);
 
+    let review = sqlx::query(
+        "SELECT id, raw_text, attempts, first_seen FROM unparsed
+         WHERE dismissed = 0 ORDER BY last_seen DESC, id DESC LIMIT 20",
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| ReviewItem {
+        id: row.get::<i64, _>("id"),
+        raw_text: row.get::<String, _>("raw_text"),
+        attempts: row.get::<i64, _>("attempts"),
+        first_seen: row.get::<i64, _>("first_seen"),
+    })
+    .collect();
+
     let latest = sqlx::query(
-        "SELECT code, kind, category, amount_cents, counterparty, occurred_at
+        "SELECT code, kind, category, amount_cents, counterparty, occurred_at,
+                balance_cents, raw_text
          FROM ledger ORDER BY occurred_at DESC, id DESC LIMIT 20",
     )
     .fetch_all(pool)
@@ -349,6 +496,8 @@ pub async fn stats(pool: &SqlitePool) -> Result<Stats, StoreError> {
         amount_cents: row.get::<i64, _>("amount_cents"),
         counterparty: row.get::<String, _>("counterparty"),
         occurred_at: row.get::<i64, _>("occurred_at"),
+        balance_cents: row.get::<Option<i64>, _>("balance_cents"),
+        raw_text: row.get::<Option<String>, _>("raw_text"),
     })
     .collect();
 
@@ -356,12 +505,54 @@ pub async fn stats(pool: &SqlitePool) -> Result<Stats, StoreError> {
         ledger_rows,
         today_spend_cents,
         today_income_cents,
+        today_payment_count,
+        balance_cents,
+        top_categories,
+        week_spend_cents,
+        prev_week_spend_cents,
         queued_jobs,
         running_jobs,
         failed_jobs,
         unparsed,
+        review,
         latest,
     })
+}
+
+/// Re-queues one parked message, then removes it from the review list.
+///
+/// The job is pushed through the same idempotency path as a fresh
+/// notification, so retrying a message that has since parsed cannot double
+/// count it. If the message is not M-Pesa at all it stays in the list.
+pub async fn retry_unparsed(pool: &SqlitePool, id: i64) -> Result<EnqueueOutcome, StoreError> {
+    let raw_text: Option<String> =
+        sqlx::query("SELECT raw_text FROM unparsed WHERE id = ?1 AND dismissed = 0")
+            .bind(id)
+            .fetch_optional(pool)
+            .await?
+            .map(|row| row.get::<String, _>("raw_text"));
+
+    let Some(raw_text) = raw_text else {
+        return Ok(EnqueueOutcome::Filtered);
+    };
+    let outcome = enqueue(pool, &raw_text, now_unix()).await?;
+    if matches!(outcome, EnqueueOutcome::Enqueued { .. }) {
+        sqlx::query("DELETE FROM unparsed WHERE id = ?1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+    }
+    Ok(outcome)
+}
+
+/// Marks one parked message as ignored. Nothing is deleted, so the message can
+/// still be inspected later with a database reader.
+pub async fn dismiss_unparsed(pool: &SqlitePool, id: i64) -> Result<bool, StoreError> {
+    let result = sqlx::query("UPDATE unparsed SET dismissed = 1 WHERE id = ?1")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected() == 1)
 }
 
 /// The `[start, end)` Unix-second window covering "today" in East Africa Time.

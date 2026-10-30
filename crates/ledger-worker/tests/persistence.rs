@@ -285,3 +285,213 @@ async fn database_file_is_created_under_the_root() {
     let _pool = open(&temp.db()).await.expect("open");
     assert!(Path::new(&temp.db()).exists());
 }
+
+// ---------------------------------------------------------------------------
+// What the 0.3 UI reads: aggregates, row details, and the review flow.
+// ---------------------------------------------------------------------------
+
+fn now_seconds() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock after epoch")
+        .as_secs() as i64
+}
+
+/// One ledger row for aggregation tests that do not want to depend on the
+/// calendar.
+struct FixtureRow<'a> {
+    code: &'a str,
+    category: &'a str,
+    kind: &'a str,
+    amount_cents: i64,
+    cost_cents: i64,
+    occurred_at: i64,
+    balance_cents: Option<i64>,
+}
+
+/// Inserts a row straight into the ledger with a chosen timestamp.
+async fn insert_fixture_row(pool: &SqlitePool, row: FixtureRow<'_>) {
+    let FixtureRow {
+        code,
+        category,
+        kind,
+        amount_cents,
+        cost_cents,
+        occurred_at,
+        balance_cents,
+    } = row;
+    sqlx::query(
+        "INSERT INTO ledger
+            (code, kind, category, amount_cents, counterparty, reference,
+             balance_cents, cost_cents, occurred_at, raw_hash, created_at, raw_text)
+         VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8, ?9, ?8, NULL)",
+    )
+    .bind(code)
+    .bind(kind)
+    .bind(category)
+    .bind(amount_cents)
+    .bind("TEST SHOP")
+    .bind(balance_cents)
+    .bind(cost_cents)
+    .bind(occurred_at)
+    .bind(format!("hash-{code}"))
+    .execute(pool)
+    .await
+    .expect("insert ledger row");
+}
+
+#[tokio::test]
+async fn ledger_keeps_a_masked_original_message_and_the_balance() {
+    let (_dir, pool) = open_temp("row-details").await;
+    let tx = ledger_core::parse(SENT).expect("fixture parses");
+    ledger_worker::store::insert_transaction(&pool, &tx, SENT)
+        .await
+        .expect("insert");
+
+    let row = stats(&pool).await.expect("stats").latest.remove(0);
+    assert_eq!(row.balance_cents, Some(123_456));
+    let raw = row.raw_text.expect("original message kept");
+    assert!(
+        !raw.contains("0700000001"),
+        "phone number must not be stored"
+    );
+    assert!(raw.contains("**********"));
+    assert!(raw.contains("SJA1B2C3D4"), "the reference stays readable");
+}
+
+#[tokio::test]
+async fn stats_aggregate_today_categories_and_the_week() {
+    let (_dir, pool) = open_temp("aggregates").await;
+    let now = now_seconds();
+    let (today_start, _) = ledger_worker::eat_day_bounds(now);
+
+    // Today: two food payments, one bill, one yesterday, one last week, and
+    // one receipt so the balance line is exercised.
+    for row in [
+        FixtureRow {
+            code: "AA1",
+            category: "food",
+            kind: "buygoods",
+            amount_cents: 30_000,
+            cost_cents: 0,
+            occurred_at: today_start + 60,
+            balance_cents: Some(50_000),
+        },
+        FixtureRow {
+            code: "AA2",
+            category: "food",
+            kind: "buygoods",
+            amount_cents: 20_000,
+            cost_cents: 0,
+            occurred_at: today_start + 120,
+            balance_cents: None,
+        },
+        FixtureRow {
+            code: "AA3",
+            category: "utilities",
+            kind: "paybill",
+            amount_cents: 40_000,
+            cost_cents: 100,
+            occurred_at: today_start + 500,
+            balance_cents: None,
+        },
+        FixtureRow {
+            code: "AA4",
+            category: "transport",
+            kind: "buygoods",
+            amount_cents: 10_000,
+            cost_cents: 0,
+            occurred_at: today_start - 86_400,
+            balance_cents: None,
+        },
+        FixtureRow {
+            code: "AA5",
+            category: "shopping",
+            kind: "buygoods",
+            amount_cents: 70_000,
+            cost_cents: 0,
+            occurred_at: today_start - 10 * 86_400,
+            balance_cents: None,
+        },
+        FixtureRow {
+            code: "AA6",
+            category: "transfer",
+            kind: "received",
+            amount_cents: 15_000,
+            cost_cents: 0,
+            occurred_at: today_start + 900,
+            balance_cents: Some(123_400),
+        },
+    ] {
+        insert_fixture_row(&pool, row).await;
+    }
+
+    let current = stats(&pool).await.expect("stats");
+    assert_eq!(
+        current.today_payment_count, 3,
+        "received money is not a payment"
+    );
+    assert_eq!(current.today_spend_cents, 30_000 + 20_000 + 40_100);
+    assert_eq!(current.today_income_cents, 15_000);
+    assert_eq!(
+        current.balance_cents,
+        Some(123_400),
+        "latest stated balance wins"
+    );
+
+    let top: Vec<(&str, i64)> = current
+        .top_categories
+        .iter()
+        .map(|total| (total.category.as_str(), total.amount_cents))
+        .collect();
+    assert_eq!(top, vec![("food", 50_000), ("utilities", 40_100)]);
+
+    // Seven-day window includes yesterday but not ten days ago.
+    assert_eq!(current.week_spend_cents, 30_000 + 20_000 + 40_100 + 10_000);
+    assert_eq!(current.prev_week_spend_cents, 70_000);
+}
+
+#[tokio::test]
+async fn review_items_can_be_retried_and_ignored() {
+    let (_dir, pool) = open_temp("review").await;
+    ledger_worker::store::record_unparsed(&pool, MALFORMED, "no amount")
+        .await
+        .expect("park");
+    ledger_worker::store::record_unparsed(&pool, MALFORMED, "no amount")
+        .await
+        .expect("park again");
+
+    let current = stats(&pool).await.expect("stats");
+    assert_eq!(current.unparsed, 1, "one message, two attempts");
+    assert_eq!(current.review.len(), 1);
+    assert_eq!(current.review[0].attempts, 2);
+    let id = current.review[0].id;
+
+    // Ignore hides it from the review list without deleting the message.
+    assert!(ledger_worker::dismiss_unparsed(&pool, id)
+        .await
+        .expect("ignore"));
+    let after = stats(&pool).await.expect("stats");
+    assert_eq!(after.unparsed, 0);
+    assert!(after.review.is_empty());
+    let still_there: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM unparsed")
+        .fetch_one(&pool)
+        .await
+        .expect("count");
+    assert_eq!(still_there, 1, "ignored, not deleted");
+
+    // Retry a second parked message: it becomes a job again and leaves the list.
+    // (A different message: ignoring is permanent per message content.)
+    let second = "SJ8Z8Z8Z8Z Confirmed. Another unreadable confirmation on 5/10/26.";
+    ledger_worker::store::record_unparsed(&pool, second, "no amount")
+        .await
+        .expect("park");
+    let id = stats(&pool).await.expect("stats").review[0].id;
+    let outcome = ledger_worker::retry_unparsed(&pool, id)
+        .await
+        .expect("retry");
+    assert!(matches!(outcome, EnqueueOutcome::Enqueued { .. }));
+    let after = stats(&pool).await.expect("stats");
+    assert!(after.review.is_empty());
+    assert_eq!(after.queued_jobs, 1);
+}

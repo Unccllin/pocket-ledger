@@ -48,7 +48,7 @@ pocket-ledger/
     ledger-worker/   Apalis worker + SQLite storage + Rivium service wrapper. Has a CLI for laptop use.
     ledger-jni/      cdylib exposing: start(root), stop(), enqueue(raw_text, ts), stats() -> JSON. Follows Rivium's JNI example.
   android/           Kotlin app: NotificationListenerService, widget (AppWidgetProvider), notification posting, JNI bridge.
-  docs/              DEVICE_TEST.md, RIVIUM_QUESTIONS.md
+  docs/              DESIGN.md (UI spec), DEVICE_TEST.md, RIVIUM_QUESTIONS.md
   media/             demo.gif
 ```
 Data flow: `NotificationListenerService -> JNI enqueue -> Apalis queue (SQLite) -> worker runs ParseTransaction -> ledger table row -> JNI stats / callback -> widget refresh + result notification`.
@@ -96,3 +96,13 @@ GATE 5: send a test SMS or notification on the emulator/phone, watch the widget 
 Give: what you built, the exact commands you ran, the real output (not paraphrased), what's next, and any risks or open questions. Then wait for approval or continue if the gate is clearly green.
 
 Start now with Phase 1. First action: read Rivium's repo and run its basic example, then begin the parser tests.
+
+## 8. UI and design (read `docs/DESIGN.md` BEFORE touching any UI code)
+- `docs/DESIGN.md` is the full spec: tokens, type, spacing, per-screen layout, states, copy, widget and notification rules. The design canvas linked inside it is the visual source of truth. Match it; do not invent a new look and do not use default Material colours.
+- Do the UI last: only after Gate 4 (JNI works). Build against a `FakeLedgerRepository` first, then swap in the real JNI-backed repository without changing UI code.
+- Order: tokens/theme -> shared components -> Home -> Activity -> result notification -> widgets. Commit after each, with a screenshot or @Preview.
+- Show the user's money, never the machinery: queued work is a calm amber state ("N messages waiting to be read. Works offline."), never an error. Only unreadable messages ask for action, via the Review flow (Retry / Ignore), and nothing is ever silently dropped.
+- Include the first-run Notification Access explainer screen (reads only M-Pesa confirmations; nothing leaves the phone).
+- Widgets update from worker completion events and must work when the Rust service isn't running.
+- Accessibility and 200% font scale are part of "done". Add screenshots to `media/` and reference them in the README.
+- GATE 6 (design): show screenshots of Home, Activity (all three row states), the widgets, and a real result notification, captured from an emulator or phone.

@@ -29,7 +29,8 @@ pub use apalis_sqlite::SqlitePool;
 pub use app::{started_root, LedgerApp, LedgerConfig};
 pub use job::ParseTransaction;
 pub use store::{
-    db_path, eat_day_bounds, enqueue, format_eat, open, queue_name, recover_orphans, stats,
-    EnqueueOutcome, LedgerRow, Stats, StoreError, MAX_ATTEMPTS,
+    db_path, dismiss_unparsed, eat_day_bounds, enqueue, format_eat, open, queue_name,
+    recover_orphans, retry_unparsed, stats, CategoryTotal, EnqueueOutcome, LedgerRow, ReviewItem,
+    Stats, StoreError, MAX_ATTEMPTS,
 };
 pub use worker::{run_worker, WorkerSettings};

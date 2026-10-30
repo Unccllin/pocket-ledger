@@ -40,7 +40,7 @@ pub async fn handle(
 
     match parse(&job.raw_text) {
         Ok(tx) => {
-            store::insert_transaction(&pool, &tx).await?;
+            store::insert_transaction(&pool, &tx, &job.raw_text).await?;
             Ok(())
         }
         Err(ParseError::NotMpesa) => Ok(()),

@@ -4,9 +4,8 @@ package com.pocketledger;
  * The only Java class the native library knows about.
  *
  * <p>The five {@code nativeStart..nativeVersion} methods are registered by
- * Rivium's {@code rivium_jni::export!}. {@code nativeEnqueue} and
- * {@code nativeStats} are resolved from the shared library by symbol name and
- * return JSON.
+ * Rivium's {@code rivium_jni::export!}. The remaining methods are resolved
+ * from the shared library by symbol name and return JSON.
  */
 public final class Bridge {
     static {
@@ -30,4 +29,8 @@ public final class Bridge {
     public static native String nativeEnqueue(String rawText, long receivedAtUnixSeconds);
 
     public static native String nativeStats();
+
+    public static native String nativeRetry(long reviewId);
+
+    public static native String nativeDismiss(long reviewId);
 }

@@ -116,3 +116,49 @@ pub extern "system" fn Java_com_pocketledger_Bridge_nativeStats<'caller>(
         })
         .resolve::<ThrowRuntimeExAndDefault>()
 }
+
+/// Re-queues a parked message from the review flow.
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_com_pocketledger_Bridge_nativeRetry<'caller>(
+    mut unowned_env: EnvUnowned<'caller>,
+    _class: JClass<'caller>,
+    review_id: jlong,
+) -> jstring {
+    unowned_env
+        .with_env(|env| -> Result<jstring, jni::errors::Error> {
+            let payload = with_bridge(|bridge| {
+                let outcome = bridge
+                    .runtime
+                    .block_on(ledger_worker::retry_unparsed(&bridge.pool, review_id))
+                    .map_err(|error| error.to_string())?;
+                Ok(to_json(&outcome))
+            })
+            .unwrap_or_else(error_json);
+
+            Ok(env.new_string(payload)?.into_raw())
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
+}
+
+/// Marks a parked message as ignored, without deleting it.
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_com_pocketledger_Bridge_nativeDismiss<'caller>(
+    mut unowned_env: EnvUnowned<'caller>,
+    _class: JClass<'caller>,
+    review_id: jlong,
+) -> jstring {
+    unowned_env
+        .with_env(|env| -> Result<jstring, jni::errors::Error> {
+            let payload = with_bridge(|bridge| {
+                let ignored = bridge
+                    .runtime
+                    .block_on(ledger_worker::dismiss_unparsed(&bridge.pool, review_id))
+                    .map_err(|error| error.to_string())?;
+                Ok(serde_json::json!({ "ignored": ignored }).to_string())
+            })
+            .unwrap_or_else(error_json);
+
+            Ok(env.new_string(payload)?.into_raw())
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
+}

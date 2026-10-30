@@ -27,6 +27,8 @@ USAGE:
     ledger-worker [--root DIR] ingest \"<message>\"
     ledger-worker [--root DIR] ingest-file <path>
     ledger-worker [--root DIR] stats
+    ledger-worker [--root DIR] retry-review <id>
+    ledger-worker [--root DIR] ignore-review <id>
     ledger-worker [--root DIR] run [--delay-ms N]
 
 OPTIONS:
@@ -42,6 +44,8 @@ enum Command {
     Ingest(String),
     IngestFile(PathBuf),
     Stats,
+    RetryReview(i64),
+    IgnoreReview(i64),
     Run { delay_ms: u64 },
     Help,
 }
@@ -124,6 +128,18 @@ async fn run_command(cli: Cli) -> Result<u8, Box<dyn Error + Send + Sync>> {
         Command::Stats => {
             let stats = ledger_worker::stats(&pool).await?;
             println!("{}", serde_json::to_string_pretty(&stats)?);
+        }
+        Command::RetryReview(id) => {
+            let outcome = ledger_worker::retry_unparsed(&pool, id).await?;
+            println!("{}", serde_json::to_string_pretty(&outcome)?);
+            report_filtered(&outcome);
+        }
+        Command::IgnoreReview(id) => {
+            let ignored = ledger_worker::dismiss_unparsed(&pool, id).await?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&json!({ "ignored": ignored }))?
+            );
         }
         Command::Run { .. } | Command::Help => {
             unreachable!("handled before the database is opened")
@@ -222,6 +238,22 @@ impl Cli {
                     command = Some(Command::IngestFile(PathBuf::from(path)));
                 }
                 "stats" => command = Some(Command::Stats),
+                "retry-review" => {
+                    let id = args
+                        .next()
+                        .ok_or("retry-review needs a row id")?
+                        .parse()
+                        .map_err(|error| format!("bad review id: {error}"))?;
+                    command = Some(Command::RetryReview(id));
+                }
+                "ignore-review" => {
+                    let id = args
+                        .next()
+                        .ok_or("ignore-review needs a row id")?
+                        .parse()
+                        .map_err(|error| format!("bad review id: {error}"))?;
+                    command = Some(Command::IgnoreReview(id));
+                }
                 "run" => {
                     // Everything after `run` belongs to Rivium (--root, --set,
                     // --config, check-config, --help, ...). We only lift out our

@@ -23,9 +23,11 @@ pub mod categorise;
 pub mod model;
 pub mod money;
 pub mod parse;
+pub mod redact;
 pub mod time;
 
 pub use categorise::categorise;
 pub use model::{Category, Kind, Transaction};
 pub use parse::{content_hash, looks_like_mpesa, normalise, parse, transaction_code, ParseError};
+pub use redact::redact_phone_numbers;
 pub use time::CivilTime;
