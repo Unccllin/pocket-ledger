@@ -143,7 +143,7 @@ private fun HomeScreen(
                 item { StatusPill(stats, onOpenDiagnostics) }
             }
 
-            item { SectionHeader(stats?.ledgerRows ?: 0) }
+            item { SectionHeader(stats?.latest?.size ?: 0, stats?.ledgerRows ?: 0) }
 
             val snapshot = stats
             if (snapshot == null) {
@@ -351,7 +351,7 @@ private fun StatusPill(stats: LedgerStats, onOpenDiagnostics: () -> Unit) {
 }
 
 @Composable
-private fun SectionHeader(count: Int) {
+private fun SectionHeader(shown: Int, total: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "Recent",
@@ -359,9 +359,15 @@ private fun SectionHeader(count: Int) {
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.weight(1f))
-        if (count > 0) {
+        if (total > 0) {
             Text(
-                text = if (count == 1) "1 message" else "$count messages",
+                // stats ships the newest 20 rows; do not claim the list is the
+                // whole ledger once it is longer than that.
+                text = when {
+                    shown < total -> "$shown of $total messages"
+                    total == 1 -> "1 message"
+                    else -> "$total messages"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

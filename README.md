@@ -100,8 +100,8 @@ cargo run -p ledger-worker -- --root target/dev stats
 
 `today_spend_cents` is `0` for the fixtures on purpose: they are dated `5/10/26`, and
 the figure only counts transactions whose message timestamp falls inside today's
-East Africa Time window. The debug button in the app generates a message dated today,
-so the widget moves.
+East Africa Time window. **Send a test message** in Diagnostics generates a message dated
+today, so the widget moves.
 
 `run` is a Rivium process host, so it also accepts `check-config`, `default-config`,
 `--config FILE` and `--set key=value`. `--delay-ms N` is a laptop-only debug knob that
