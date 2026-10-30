@@ -157,6 +157,27 @@ proven on a real device. After the fresh install the first-run explainer appeare
 permission prompt was accepted, **Continue** led to the empty Home, and a synthetic
 M-Pesa notification then produced `Ksh 350 / 1 payment / Food` on Home.
 
+### Widget live update (release build, app force-stopped)
+
+The "Spent today" widget was placed on the launcher, the app was force-stopped, and one
+synthetic M-Pesa notification was posted from the device shell (the launcher stayed in
+front the whole time). Read back with `uiautomator`:
+
+```
+before:  resource-id="com.pocketledger:id/widget_spent_amount" text="Ksh 0"
+after:   resource-id="com.pocketledger:id/widget_spent_amount" text="Ksh 350"
+```
+
+The listener started the Rust service while the app was dead, the job parsed and stored
+the row, the snapshot was cached, and `Widgets.refresh` redrew both providers. That is
+the spec's widget promise verified on the signed release build rather than the emulator.
+The "This week" widget shares the same refresh call and was rendered next to it on the
+emulator (`media/ui/widgets.png`); it was not placed on the owner's phone to avoid
+disturbing their home screen further.
+
+One thing this shows: a freshly installed app with an empty ledger draws `Ksh 0`
+(the empty state), not `Ksh —`; the dash only appears before the first snapshot exists.
+
 ### Two bugs this pass found (and fixed)
 
 1. **The first-run screen never noticed access being granted.** The polling effect
