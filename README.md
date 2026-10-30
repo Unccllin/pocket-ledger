@@ -2,6 +2,10 @@
 
 > Rivium + Apalis pocket backend challenge entry: an offline-first M-Pesa auto-ledger.
 
+**Install:** [unccllin.github.io/pocket-ledger](https://unccllin.github.io/pocket-ledger/) — one
+download button, the exact steps past Play Protect, and a QR for phones. The APK itself is
+on [Releases](https://github.com/Unccllin/pocket-ledger/releases/latest).
+
 M-Pesa confirmation notifications are captured by an Android Notification Listener,
 queued as Apalis jobs, parsed by a Rust worker running under Rivium inside the app,
 stored in SQLite, and surfaced on a home screen widget plus a result notification.
@@ -41,9 +45,10 @@ phone owner's personal notifications, which do not belong in a repository.
 pocket-ledger is sideloaded from a signed APK - there is no Play listing, which suits an
 app with no account and no `INTERNET` permission.
 
-- Download the latest `pocket-ledger-<version>.apk` from
-  [Releases](https://github.com/Unccllin/pocket-ledger/releases/latest) (Android 8.0+,
-  arm64 phone; the same file also carries an `x86_64` build for emulators, ~45 MB).
+- Open the [install page](https://unccllin.github.io/pocket-ledger/) (or the
+  [Releases](https://github.com/Unccllin/pocket-ledger/releases/latest) page) and
+  download the latest APK (Android 8.0+, arm64 phone; the same file also carries an
+  `x86_64` build for emulators, ~29.5 MB).
 - Tap it, allow installs from your file manager, install, then allow Notification Access
   on the first screen.
 - Check `SHA256SUMS.txt` from the release page if you want to verify the download; the

@@ -1,5 +1,9 @@
 # Install pocket-ledger on your phone
 
+**Quickest route:** open <https://unccllin.github.io/pocket-ledger/> on the phone —
+one download button, the blocker steps, and a QR for desktop. The rest of this page is
+the same information in more detail.
+
 pocket-ledger is sideloaded, not on the Play Store: it is an offline, no-account
 app that has no `INTERNET` permission, so there is nothing for a store listing to
 add. You install a signed APK, the same way as any other Android app from

@@ -44,7 +44,15 @@ Only needed for automated releases; the container package uses the built-in
 Add them under **Settings -> Secrets and variables -> Actions**. Without them,
 `release.yml` still builds an unsigned artifact and skips the Release.
 
-### 3. Package visibility
+### 3. The install page
+
+`docs/index.html` is the download page (and the QR in it encodes its own URL). Enable
+it once: **Settings -> Pages -> Build and deployment -> Deploy from a branch -> master
+/ docs**, then it lives at <https://unccllin.github.io/pocket-ledger/>. The page resolves
+the newest APK from the Releases API, so it needs no update per release. If the repository
+is renamed, regenerate `docs/assets/qr.png` with the new URL.
+
+### 4. Package visibility
 
 Images are published under the caller's package namespace. If the package should
 be pullable by everyone, set its visibility to public under **Packages ->
