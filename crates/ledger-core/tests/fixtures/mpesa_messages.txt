@@ -1,0 +1,25 @@
+# SYNTHETIC M-Pesa fixtures. All names, numbers and codes are fake.
+# Format: one message per block, blocks separated by a line containing only ---
+# Header line "# kind=... amount=... " is the EXPECTED parse, used by tests.
+# The owner must verify/replace these with blanked real messages; real formats win.
+
+# kind=sent amount=500.00 counterparty="JOHN DOE" balance=1234.56 cost=7.00
+SJA1B2C3D4 Confirmed. Ksh500.00 sent to JOHN DOE 0700000001 on 5/10/26 at 2:15 PM. New M-PESA balance is Ksh1,234.56. Transaction cost, Ksh7.00. Amount you can transact within the day is 499,500.00.
+---
+# kind=received amount=1000.00 counterparty="JANE DOE" balance=2234.56 cost=0.00
+SJA2B3C4D5 Confirmed.You have received Ksh1,000.00 from JANE DOE 0700000002 on 5/10/26 at 9:00 AM  New M-PESA balance is Ksh2,234.56.
+---
+# kind=paybill amount=1200.00 counterparty="KPLC PREPAID" balance=1034.56 cost=0.00
+SJA3B4C5D6 Confirmed. Ksh1,200.00 sent to KPLC PREPAID for account 00000000 on 5/10/26 at 8:00 PM New M-PESA balance is Ksh1,034.56. Transaction cost, Ksh0.00.
+---
+# kind=buygoods amount=350.00 counterparty="JAVA HOUSE" balance=684.56 cost=0.00
+SJA4B5C6D7 Confirmed. Ksh350.00 paid to JAVA HOUSE. on 5/10/26 at 1:00 PM.New M-PESA balance is Ksh684.56. Transaction cost, Ksh0.00.
+---
+# kind=airtime amount=100.00 counterparty="Safaricom" balance=584.56 cost=0.00
+SJA5B6C7D8 confirmed. You bought Ksh100.00 of airtime on 5/10/26 at 7:00 PM.New M-PESA balance is Ksh584.56. Transaction cost, Ksh0.00.
+---
+# kind=withdraw amount=2000.00 counterparty="AGENT 123456" balance=3000.00 cost=28.00
+SJA6B7C8D9 Confirmed.on 5/10/26 at 4:00 PM Withdraw Ksh2,000.00 from 123456 - AGENT NAME New M-PESA balance is Ksh3,000.00. Transaction cost, Ksh28.00.
+---
+# kind=unknown
+Your M-PESA statement for this month is ready. Dial *334# to view.
