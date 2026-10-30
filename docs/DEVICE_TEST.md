@@ -102,3 +102,59 @@ above still describe the backend and the listener. The next device session shoul
 - Behaviour under Doze / aggressive OEM battery savers beyond a normal force-stop.
 - A release build (debug APK only).
 - The 0.2.0 Compose screens and widget refresh on a physical device (see above).
+
+## Version 0.3.0 design pass — phone and emulator
+
+The 0.1.0 log above still describes the backend and the listener. The redesign
+(Home, Activity, Settings, sheets, widgets, notification copy, app icon) was reviewed
+against `docs/DESIGN.md` on two devices:
+
+* **Physical phone** (Samsung SM-A546U1, Android 16): the three main screens, the details
+  sheet, the revoked-access banner and 200% font scale. It is the owner's daily driver, so
+  the status bar was cropped out of the committed screenshots — it carried their own
+  notifications and music.
+* **Android 16 (API 36) x86_64 emulator** (headless in Docker with `--device /dev/kvm`):
+  the states that are awkward to stage on someone's phone — first run, empty Home, the
+  review sheet, the notification shade, both widgets, and the queued ("Reading now") row.
+
+The app was installed with the documented debug build (`versionCode 3`, `0.3.0`), both
+ABIs, and data seeded with synthetic M-Pesa notifications through the listener.
+
+### Evidence
+
+| Screenshot | Device | Shows |
+|---|---|---|
+| `home.png` | phone | hero total, daily-limit bar, top categories, latest rows |
+| `activity.png` | phone | filters, day heading, done and needs-review rows |
+| `settings.png` | phone | daily limit, access, test message, stop service, worker version |
+| `details.png` | phone | code, balance after, Show original |
+| `home-revoked.png` | phone | persistent "Notification access is off" banner |
+| `home-200.png` | phone | 200% font scale, nothing clipped |
+| `first-run.png`, `first-run-granted.png` | emulator | explainer, then the granted state |
+| `home-empty.png` | emulator | the empty ledger |
+| `review.png` | emulator | original message, Retry, Ignore |
+| `activity-waiting.png` | emulator | done + "Reading message…" + needs review together |
+| `widgets.png` | emulator | both widgets on the launcher |
+| `notifications.png` | emulator | grouped results and the summary entry |
+
+### Two bugs this pass found (and fixed)
+
+1. **The first-run screen never noticed access being granted.** The polling effect
+   returned early whenever onboarding was not finished, so coming back from the system
+   setting left the screen on "needs access". It now polls access on every tick and only
+   skips the Rust `stats` call before onboarding is done.
+2. **The app icon was the default Android robot.** Launcher, widget picker and status
+   bar now use the receipt-slip mark described in the README.
+
+A tooling gotcha worth recording: `adb.exe` from Windows (driven out of WSL) re-splits
+`cmd notification post ... 'long body'` and the listener receives only
+`M-PESA <code>`, so the shape filter correctly rejects it. Pushing a small `sh` script to
+`/data/local/tmp` and running it on the device posts the full body.
+
+### Not verified in this pass
+
+- TalkBack proper: row semantics were inspected in the `uiautomator` tree (one merged
+  label per row) but no spoken pass was recorded.
+- Dark theme, by design: v1 is light-only.
+- Widgets with a completely empty cache ("Ksh —", "No data yet"): the fallback exists,
+  but it was not photographed.

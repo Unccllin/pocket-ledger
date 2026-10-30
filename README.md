@@ -18,11 +18,12 @@ Everything stays on the phone. The app has no `INTERNET` permission at all.
    M-Pesa transaction code.
 3. A Rust worker running under Rivium parses it, categorises it, and stores one row
    in the `ledger` table.
-4. The phone shows the result: a home screen widget with today's spend and the number
-   of jobs still queued, a notification such as `Spent Ksh350.00` (`JAVA HOUSE · Food`),
-   and a today-first home screen listing every confirmation.
+4. The phone shows the result: **Home** (today's total, a daily-limit bar, the top
+   three categories and the latest rows), **Activity** (everything, grouped by day,
+   with waiting and needs-review states), two home screen widgets, and a result
+   notification such as `Spent Ksh 350 at Java House` / `Food · 53% of daily limit used`.
 
-One job type, no scope creep. The test button in Diagnostics is a debug aid; the real
+One job type, no scope creep. The test button in Settings is a debug aid; the real
 trigger is an incoming notification.
 
 ## Demo
@@ -58,9 +59,60 @@ crates/
   ledger-core/     pure Rust: parser, categoriser, domain types (zero dependencies)
   ledger-worker/   Apalis worker + SQLite ledger + Rivium App + laptop CLI
   ledger-jni/      cdylib: Rivium's five-method ABI + nativeEnqueue/nativeStats
-android/           Kotlin app: Compose UI, listener, widget, result notification, JNI bridge
+android/           Kotlin app: Compose UI (Home, Activity, Settings), listener,
+                   two widgets, result notification, JNI bridge
 docs/              DEVICE_TEST.md
 ```
+
+## Design
+
+The UI follows [`docs/DESIGN.md`](docs/DESIGN.md): tokens, type, spacing, per-screen
+layout, states and copy. One light theme: ground `#F4F7F2`, a forest `#0F3D2B` hero, mint
+for the one progress bar, amber for "waiting" and red only for messages that need a
+person. Type is **Plus Jakarta Sans**, bundled under `android/app/src/main/res/font/`
+(SIL OFL, licence in `android/app/src/main/assets/licenses/`), so the app still never
+downloads anything. No icons and no emoji anywhere: rows carry initials.
+
+The app icon is the same idea as the hero card: a white M-Pesa confirmation slip with a
+mint head and a torn bottom edge, on forest. It ships as an adaptive icon (with a
+monochrome layer for Android 13 themed icons) plus raster fallbacks, and a matching
+24dp white slip is the notification small icon, so the status bar no longer shows a
+generic system glyph.
+
+![App icon](media/ui/icon.png)
+
+| Home | Activity | Settings |
+|---|---|---|
+| ![Home](media/ui/home.png) | ![Activity](media/ui/activity.png) | ![Settings](media/ui/settings.png) |
+
+Those three, plus `home-revoked.png`, `home-200.png` and `details.png`, were captured on
+the **physical phone** (the status bar is cropped out: it carried the owner's own
+notifications). The states that are hard to stage on someone's daily driver were captured
+on the Android 16 emulator instead: the first-run explainer and its granted state, the
+empty Home, the review sheet, the notification shade and both widgets.
+
+Also captured: `media/ui/home-empty.png`, `home-revoked.png`, `first-run.png`,
+`first-run-granted.png`, `details.png`, `review.png`, `widgets.png` (forest "Spent today"
+and surface "This week" on the launcher), `notifications.png` (grouped results) and
+`home-200.png` (200% font scale; rows grow, amounts do not clip). `activity-waiting.png`
+is the Activity screen with a message still reading, so the amber waiting row is visible
+next to done and needs-review rows; it comes from the emulator, where a burst of messages
+can be queued on demand.
+
+How the pieces line up with the spec's build order:
+
+| Spec step | Where |
+|---|---|
+| Tokens, type, theme | `ui/design/Color.kt`, `Type.kt`, `Theme.kt` |
+| Shared components | `ui/components/` (hero, waiting strip, tiles, rows, chips, nav) |
+| Home | `ui/screens/HomeScreen.kt` |
+| Activity + review | `ui/screens/ActivityScreen.kt`, `Sheets.kt` |
+| Result notification | `MpesaText.kt` |
+| Widgets | `widget/Widgets.kt` + `res/layout/widget_*.xml` |
+| Repository seam | `data/LedgerState.kt` (interface), `JniLedgerRepository`, `FakeLedgerRepository` |
+| First run | `ui/screens/FirstRunScreen.kt` |
+| Daily limit | `data/LedgerPrefs.kt` (Ksh 4,000 default, editable in Settings) |
+| App icon | `drawable/ic_launcher_*` + `mipmap-*` |
 
 ## Run on laptop (no phone)
 
@@ -110,7 +162,7 @@ keeps a job in flight for the persistence scenario below.
 ### Tests
 
 ```sh
-cargo test --workspace     # 61 tests: parser fixtures, dedup, retries, orphan recovery
+cargo test --workspace     # 67 tests: parser fixtures, dedup, retries, orphan recovery, aggregates
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
 ```
@@ -138,18 +190,25 @@ The Gradle build needs `android/local.properties` with `sdk.dir=/path/to/Android
 
 In the app:
 
-1. Open **pocket-ledger** and tap **Enable** on the notification-access banner (or grant
-   it over adb, see below).
-2. Add the **pocket-ledger** widget to the home screen.
-3. Watch confirmations land: the home screen lists them, the widget and the result
-   notification update without opening the app.
+1. The first screen explains why Notification Access is needed; tap **Open notification
+   access settings**, allow pocket-ledger, come back and tap **Continue**. (The first
+   screen shows a "granted" state the moment the system setting changes.)
+2. Add the two widgets: **Spent today** (forest, 2x2) and **This week** (surface, 2x2).
+3. Watch confirmations land: Home and Activity update, both widgets redraw and the
+   result notification appears without opening the app.
 
-The home screen is the consumer view: today's spend, today's income, and the recent
-confirmations with category and time. The **i** button opens **Diagnostics**, which keeps
-the technical surface out of the way: queue counters, **Send a test message**,
-**Notification access settings**, and **Stop the background service** (so on-demand start
-can be demonstrated). The screen polls `stats` only while it is visible (every 2.5 s, or
-every 0.8 s while jobs are in flight).
+Screens: **Home** (date, title, forest hero with today's total and the daily-limit bar,
+the amber waiting strip when jobs are queued, the top three categories, three latest
+rows), **Activity** (All/Spent/Received/Review filters, day headings, and the three row
+states: done, waiting, needs review) and **Settings** (daily limit, notification access,
+the test message, stopping the service, worker version). Row taps open a details sheet
+with the transaction code, the balance after, and the original message behind **Show
+original** (phone numbers masked). A needs-review row opens the review sheet with
+**Retry** and **Ignore**; nothing is ever deleted.
+
+The screens read one `stats` call through `LedgerRepository`. Home refreshes every 2.5 s
+while visible, Activity every 1 s (rows change state there); widgets never poll and never
+start the service, they draw the last cached snapshot.
 
 Granting Notification Access and sending a notification over adb, exactly as tested:
 
@@ -234,9 +293,17 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 - The Android result notification is posted by Kotlin polling `stats` for up to 5
   seconds after enqueue, not by a native callback; a native completion callback is the
   obvious next step.
-- The 0.2.0 UI depends on AndroidX Compose (BOM `2026.05.01`, i.e. Compose 1.11.x) and
+- The UI depends on AndroidX Compose (BOM `2026.05.01`, i.e. Compose 1.11.x) and
   `activity-compose` 1.12.4. Those are UI libraries only; the app still declares no
   `INTERNET` permission, so nothing can phone home even in principle.
+- v1 is light-only. `docs/DESIGN.md` asks for that; a dark theme is under Future ideas.
+- Widgets draw the cached snapshot, never the live service, and refresh when a message
+  finishes (the listener triggers it). There is still no native completion event from
+  Rivium to Kotlin, so "finished" means "the row is visible in `stats`".
+- The daily limit is a local preference used for one progress bar; it is not a budget
+  engine and the app never blocks a payment.
+- The 0.3 screenshots were captured on an Android 16 x86_64 emulator. `docs/DEVICE_TEST.md`
+  holds the separate physical-phone log, which predates the redesign.
 - No release signing, no CI, no Play packaging: this is a challenge entry, not a store
   app.
 
@@ -246,7 +313,7 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 - Monthly summary screen and a per-category breakdown.
 - Re-process the `unparsed` table from a debug screen after the parser improves.
 - Export to CSV through the system file picker (still no network).
-- Re-record `media/demo.gif` with the 0.2.0 home screen (the current GIF shows 0.1.0).
+- Re-record `media/demo.gif` with the current screens (the GIF still shows 0.1.0).
 
 ## Versions used (pinned)
 
@@ -269,7 +336,9 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 | Android build-tools / NDK / platform-tools | 36.0.0 / 27.2.12479018 / 37.0.1 |
 | AndroidX Compose BOM | 2026.09.00 |
 | `androidx.activity:activity-compose` | 1.13.0 |
-| Test device | Samsung SM-A546U1, Android 16 (SDK 36), arm64-v8a |
+| Test device | Samsung SM-A546U1, Android 16 (SDK 36), arm64-v8a (0.1.0 pipeline) |
+| Design-pass device | Android 16 (API 36) x86_64 emulator, 1080x2400 @420dpi, KVM |
+| Typeface | Plus Jakarta Sans (variable, SIL OFL, bundled in `res/font/`) |
 
 ## Real phone test notes (bonus)
 
