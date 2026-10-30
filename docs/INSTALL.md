@@ -30,6 +30,31 @@ outside Play.
    **Open notification access settings**, find *pocket-ledger M-Pesa listener*,
    allow it, come back and tap **Continue**.
 
+### If Play Protect or Auto Blocker blocks it
+
+A self-signed APK that is not distributed through Play is not on Play Protect's
+allowlist, so a warning is normal. On Samsung phones (One UI 6.1 and newer)
+**Auto Blocker** turns that warning into a hard block.
+
+1. **Settings -> Security and privacy -> Auto Blocker -> off.** You can turn it
+   back on after installing. This is what blocks the install on most Samsungs.
+2. If Play Protect itself blocks it: **Play Store -> profile -> Play Protect ->
+   gear -> turn off "Scan apps with Play Protect"** for the install, then turn it
+   back on. In the warning dialog, **More details -> Install anyway** also works
+   on builds that offer it.
+3. If the browser refuses the download, choose **Download anyway**; Chrome shows
+   this for any APK it has not seen before. Downloading with Samsung Internet or
+   on a computer and copying the file over avoids it entirely.
+4. Allow installs from the app you opened the APK with (Files, Chrome, ...) when
+   Android asks.
+
+After installing, check **Settings -> Apps -> Pocket Ledger** shows version 0.3.0,
+and optionally compare the checksum and certificate above.
+
+There is no way to make a sideloaded, self-signed APK trusted by Play Protect
+without publishing through Play (a developer account and review); the app itself
+needs no network access, so this warning is the only cost of sideloading.
+
 ### Updating
 
 Install the newer APK over the old one - your ledger stays. Android only allows
