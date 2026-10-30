@@ -1,7 +1,0 @@
-info: downloading installer
-error: error: unexpected argument 'rustfmt' found
-
-Usage: rustup-init[EXE] [OPTIONS]
-
-For more information, try '--help'.
-

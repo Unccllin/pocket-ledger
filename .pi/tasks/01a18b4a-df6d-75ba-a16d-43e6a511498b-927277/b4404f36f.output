@@ -1,6 +1,0 @@
-info: downloading 2 components
-  Installing /home/cllin/.cargo/bin/cargo-ndk
-  Installing /home/cllin/.cargo/bin/cargo-ndk-env
-  Installing /home/cllin/.cargo/bin/cargo-ndk-runner
-  Installing /home/cllin/.cargo/bin/cargo-ndk-test
-   Installed package `cargo-ndk v4.1.2` (executables `cargo-ndk`, `cargo-ndk-env`, `cargo-ndk-runner`, `cargo-ndk-test`)
