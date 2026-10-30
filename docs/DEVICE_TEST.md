@@ -137,6 +137,26 @@ ABIs, and data seeded with synthetic M-Pesa notifications through the listener.
 | `widgets.png` | emulator | both widgets on the launcher |
 | `notifications.png` | emulator | grouped results and the summary entry |
 
+### Signed release install (the artifact people download)
+
+The signed APK from `scripts/release.sh` was installed on the phone over the debug
+build, exactly as an end user would:
+
+```sh
+adb uninstall com.pocketledger            # debug and release keys differ
+adb install dist/pocket-ledger-0.3.0.apk # Success
+adb shell dumpsys package com.pocketledger | grep versionName  # 0.3.0
+adb pull /data/app/.../base.apk /tmp/installed.apk
+apksigner verify --print-certs /tmp/installed.apk
+# SHA-256: e1588e0a325a276679f85b1a859a808ff045135013ffe1599a0857a1b6ea7fcc
+```
+
+The pulled `base.apk` is byte-identical to the release artifact (29,481,110 bytes) and
+carries the release certificate, so the signing config, packaging and install path are
+proven on a real device. After the fresh install the first-run explainer appeared, the
+permission prompt was accepted, **Continue** led to the empty Home, and a synthetic
+M-Pesa notification then produced `Ksh 350 / 1 payment / Food` on Home.
+
 ### Two bugs this pass found (and fixed)
 
 1. **The first-run screen never noticed access being granted.** The polling effect

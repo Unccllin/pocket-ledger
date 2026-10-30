@@ -88,4 +88,13 @@ git push origin v0.3.0
 
 The workflow needs the four signing secrets listed at the top of
 `.github/workflows/release.yml`; without them it produces an unsigned artifact
-and does not create a release.
+and does not create a release. From the machine that holds the key:
+
+```sh
+base64 -w0 ~/.pocketledger/release.jks          # ANDROID_KEYSTORE_BASE64
+cat ~/.pocketledger/keystore.properties         # passwords + alias
+```
+
+Add them under **Settings -> Secrets and variables -> Actions**, then push a tag.
+Alternatively, upload `dist/pocket-ledger-<version>.apk` and its `.sha256` by hand
+to a GitHub Release - the file is already signed and ready.
