@@ -50,6 +50,18 @@ app with no account and no `INTERNET` permission.
   signing certificate digest is published in [`docs/INSTALL.md`](docs/INSTALL.md) and
   stays the same across releases.
 
+The laptop worker is also published as a container image on GitHub Packages
+(`ghcr.io/unccllin/pocket-ledger`, tags `latest` and `X.Y.Z`), built on every push
+to master and on tags:
+
+```sh
+docker run --rm -v "$PWD/ledger-data:/data" \
+  ghcr.io/unccllin/pocket-ledger:latest --root /data ingest \
+  "SJA1B2C3D4 Confirmed. Ksh500.00 sent to JOHN DOE on 5/10/26 at 2:15 PM. New M-PESA balance is Ksh1,234.56."
+docker run --rm -v "$PWD/ledger-data:/data" \
+  ghcr.io/unccllin/pocket-ledger:latest --root /data stats
+```
+
 Build a signed APK yourself with `scripts/release.sh` (it creates the key once, outside
 the repo, at `~/.pocketledger/release.jks` and prints its fingerprint). Maintainers
 publish by pushing a `v*` tag: `.github/workflows/release.yml` builds both Rust ABIs,
@@ -137,7 +149,7 @@ How the pieces line up with the spec's build order:
 
 ## Run on laptop (no phone)
 
-Requires Rust 1.92+ (the workspace pins `rust-version = "1.92"`; built here with 1.99.1).
+Requires Rust 1.94+ (the workspace pins `rust-version = "1.94"`; `sqlx 0.9` needs it; built here with 1.99.1).
 
 ```sh
 # 1. Parse fixtures and enqueue them. The non-M-Pesa block is filtered out.
@@ -344,7 +356,7 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 
 | Thing | Version |
 |---|---|
-| Rust | 1.99.1 (workspace MSRV 1.92) |
+| Rust | 1.99.1 (workspace MSRV 1.94) |
 | Rivium (`rivium`, `rivium-host`, `rivium-jni`) | 0.2.0 |
 | Apalis | 1.0.0 |
 | Apalis SQLite storage (`apalis-sqlite`) | 1.0.0 |
@@ -363,6 +375,7 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 | `androidx.activity:activity-compose` | 1.13.0 |
 | Test device | Samsung SM-A546U1, Android 16 (SDK 36), arm64-v8a (0.1.0 pipeline) |
 | Design-pass device | Android 16 (API 36) x86_64 emulator, 1080x2400 @420dpi, KVM |
+| Container package | `ghcr.io/unccllin/pocket-ledger` (laptop CLI/worker) |
 | Release signing | RSA-4096, certificate SHA-256 `e1588e0a325a276679f85b1a859a808ff045135013ffe1599a0857a1b6ea7fcc` |
 | Typeface | Plus Jakarta Sans (variable, SIL OFL, bundled in `res/font/`) |
 

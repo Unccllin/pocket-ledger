@@ -1,0 +1,9 @@
+target/
+android/
+media/
+dist/
+.git/
+.pi/
+**/*.db
+**/*.db-wal
+**/*.db-shm

@@ -6,4 +6,4 @@ members = ["crates/ledger-core", "crates/ledger-worker", "crates/ledger-jni"]
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.92"
+rust-version = "1.94"
