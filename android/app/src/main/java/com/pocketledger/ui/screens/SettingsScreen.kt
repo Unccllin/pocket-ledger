@@ -43,7 +43,6 @@ fun SettingsScreen(
     version: String,
     onDailyLimitChange: (Long) -> Unit,
     onGrantAccess: () -> Unit,
-    onSendTestMessage: () -> Unit,
     onStopService: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -103,12 +102,6 @@ fun SettingsScreen(
         Spacer(Modifier.height(24.dp))
         SectionLabel(stringResource(R.string.settings_this_device))
         Spacer(Modifier.height(8.dp))
-        SettingRow(
-            title = stringResource(R.string.settings_test_title),
-            subtitle = stringResource(R.string.settings_test_body),
-            action = stringResource(R.string.settings_test_action),
-            onAction = onSendTestMessage,
-        )
         SettingRow(
             title = stringResource(R.string.settings_stop_title),
             subtitle = stringResource(R.string.settings_stop_body),

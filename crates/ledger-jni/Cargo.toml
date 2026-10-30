@@ -1,6 +1,6 @@
 [package]
 name = "ledger-jni"
-version = "0.1.0"
+version = "0.3.1"
 edition.workspace = true
 rust-version.workspace = true
 description = "Android JNI bridge: Rivium's five-method ABI plus enqueue/stats"

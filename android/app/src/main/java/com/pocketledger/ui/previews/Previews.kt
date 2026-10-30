@@ -109,7 +109,6 @@ private fun SettingsPreview() = Wrap {
         version = "pocket-ledger 0.3.0",
         onDailyLimitChange = {},
         onGrantAccess = {},
-        onSendTestMessage = {},
         onStopService = {},
     )
 }

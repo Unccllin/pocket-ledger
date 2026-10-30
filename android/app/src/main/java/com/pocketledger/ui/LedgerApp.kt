@@ -33,9 +33,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Calendar
-import java.util.Locale
-import java.util.Random
 
 /**
  * The app shell: first run, three tabs, and the two sheets.
@@ -128,12 +125,6 @@ fun LedgerApp(repository: LedgerRepository = rememberDefaultRepository()) {
                     LedgerPrefs.setDailyLimitCents(context, cents)
                 },
                 onGrantAccess = { openNotificationAccessSettings(context) },
-                onSendTestMessage = {
-                    scope.launch {
-                        withContext(Dispatchers.IO) { sendTestMessage(context) }
-                        refresh()
-                    }
-                },
                 onStopService = {
                     scope.launch {
                         withContext(Dispatchers.IO) { LedgerRuntime.stop() }
@@ -176,19 +167,4 @@ fun LedgerApp(repository: LedgerRepository = rememberDefaultRepository()) {
 private fun rememberDefaultRepository(): LedgerRepository {
     val context = LocalContext.current.applicationContext
     return remember(context) { JniLedgerRepository(context) }
-}
-
-/** Debug aid, also reachable from Settings: a confirmation dated today. */
-private fun sendTestMessage(context: android.content.Context) {
-    val now = Calendar.getInstance()
-    val date = "${now.get(Calendar.DAY_OF_MONTH)}/" +
-        "${now.get(Calendar.MONTH) + 1}/" +
-        "${now.get(Calendar.YEAR) % 100}"
-    val hour12 = ((now.get(Calendar.HOUR) + 11) % 12) + 1
-    val minute = String.format(Locale.US, "%02d", now.get(Calendar.MINUTE))
-    val meridiem = if (now.get(Calendar.AM_PM) == Calendar.PM) "PM" else "AM"
-    val code = "SJ" + String.format(Locale.US, "%08d", Random().nextInt(100_000_000))
-    val message = "$code Confirmed. Ksh350.00 paid to JAVA HOUSE. on $date at $hour12:$minute $meridiem. " +
-        "New M-PESA balance is Ksh684.56. Transaction cost, Ksh0.00."
-    LedgerRuntime.enqueue(context, message, System.currentTimeMillis() / 1000)
 }

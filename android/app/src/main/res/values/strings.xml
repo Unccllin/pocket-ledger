@@ -77,9 +77,6 @@
     <string name="settings_access_off">Off: no new confirmations can be read.</string>
     <string name="settings_change">Change</string>
     <string name="settings_this_device">This device</string>
-    <string name="settings_test_title">Send a test message</string>
-    <string name="settings_test_body">Adds a Ksh 350 Java House payment dated today.</string>
-    <string name="settings_test_action">Send</string>
     <string name="settings_stop_title">Stop the background service</string>
     <string name="settings_stop_body">Starts again by itself the next time a message arrives.</string>
     <string name="settings_stop_action">Stop</string>

@@ -800,11 +800,11 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "ledger-core"
-version = "0.1.0"
+version = "0.3.1"
 
 [[package]]
 name = "ledger-jni"
-version = "0.1.0"
+version = "0.3.1"
 dependencies = [
  "jni",
  "ledger-worker",
@@ -817,7 +817,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-worker"
-version = "0.1.0"
+version = "0.3.1"
 dependencies = [
  "apalis",
  "apalis-sqlite",

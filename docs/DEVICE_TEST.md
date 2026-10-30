@@ -126,7 +126,7 @@ ABIs, and data seeded with synthetic M-Pesa notifications through the listener.
 |---|---|---|
 | `home.png` | phone | hero total, daily-limit bar, top categories, latest rows |
 | `activity.png` | phone | filters, day heading, done and needs-review rows |
-| `settings.png` | phone | daily limit, access, test message, stop service, worker version |
+| `settings.png` | phone | daily limit, access, stop service, worker version |
 | `details.png` | phone | code, balance after, Show original |
 | `home-revoked.png` | phone | persistent "Notification access is off" banner |
 | `home-200.png` | phone | 200% font scale, nothing clipped |
@@ -177,6 +177,16 @@ disturbing their home screen further.
 
 One thing this shows: a freshly installed app with an empty ledger draws `Ksh 0`
 (the empty state), not `Ksh —`; the dash only appears before the first snapshot exists.
+
+### 0.3.1: test button removed, versions aligned
+
+The `Send a test message` row is gone: it wrote a real ledger row, which does not belong
+in a daily-driver build. The Rust crate versions were aligned with the app at the same
+time, so Settings reports `pocket-ledger 0.3.1` instead of the stale `0.1.0`.
+
+Installed 0.3.1 over 0.3.0 with the same key (data kept). `uiautomator` shows no
+`Send a test message` row and `Worker / pocket-ledger 0.3.1`; `media/ui/settings.png` was
+recaptured from this build.
 
 ### Two bugs this pass found (and fixed)
 
