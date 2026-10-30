@@ -146,6 +146,12 @@ ABIs, and data seeded with synthetic M-Pesa notifications through the listener.
 2. **The app icon was the default Android robot.** Launcher, widget picker and status
    bar now use the receipt-slip mark described in the README.
 
+The review flow was also exercised on the emulator: tapping **Ignore** on the parked
+message removed it from Activity and cleared the "Needs a look" section (checked with
+`uiautomator` before and after), which proves the `nativeDismiss` → `dismiss_unparsed` →
+`stats` path. **Retry** uses the same bridge plumbing and is covered by the Rust
+`review_items_can_be_retried_and_ignored` test.
+
 A tooling gotcha worth recording: `adb.exe` from Windows (driven out of WSL) re-splits
 `cmd notification post ... 'long body'` and the listener receives only
 `M-PESA <code>`, so the shape filter correctly rejects it. Pushing a small `sh` script to
