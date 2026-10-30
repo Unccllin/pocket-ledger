@@ -110,7 +110,7 @@ pub struct Stats {
     pub failed_jobs: i64,
     /// Messages parked for review in the `unparsed` table.
     pub unparsed: i64,
-    /// Most recent ledger rows.
+    /// Most recent ledger rows, newest first.
     pub latest: Vec<LedgerRow>,
 }
 
@@ -337,7 +337,7 @@ pub async fn stats(pool: &SqlitePool) -> Result<Stats, StoreError> {
 
     let latest = sqlx::query(
         "SELECT code, kind, category, amount_cents, counterparty, occurred_at
-         FROM ledger ORDER BY occurred_at DESC, id DESC LIMIT 5",
+         FROM ledger ORDER BY occurred_at DESC, id DESC LIMIT 20",
     )
     .fetch_all(pool)
     .await?

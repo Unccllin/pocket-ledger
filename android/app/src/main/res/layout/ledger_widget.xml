@@ -3,23 +3,35 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#E6FFFFFF"
+    android:background="@drawable/widget_card"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:letterSpacing="0.12"
+        android:text="@string/widget_spend_label"
+        android:textColor="#6E6A63"
+        android:textSize="10sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/widget_today"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/widget_offline"
-        android:textColor="#111111"
-        android:textSize="18sp"
+        android:layout_marginTop="4dp"
+        android:text="@string/widget_placeholder"
+        android:textColor="#0E6B4F"
+        android:textSize="22sp"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/widget_queue"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#444444"
-        android:textSize="13sp" />
+        android:layout_marginTop="2dp"
+        android:text="@string/widget_idle"
+        android:textColor="#6E6A63"
+        android:textSize="11sp" />
 </LinearLayout>

@@ -19,11 +19,11 @@ Everything stays on the phone. The app has no `INTERNET` permission at all.
 3. A Rust worker running under Rivium parses it, categorises it, and stores one row
    in the `ledger` table.
 4. The phone shows the result: a home screen widget with today's spend and the number
-   of jobs still queued, and a notification such as
-   `Spent Ksh350.00 at JAVA HOUSE`.
+   of jobs still queued, a notification such as `Spent Ksh350.00` (`JAVA HOUSE · Food`),
+   and a today-first home screen listing every confirmation.
 
-One job type, no scope creep. The button in the app is a debug aid; the real trigger
-is an incoming notification.
+One job type, no scope creep. The test button in Diagnostics is a debug aid; the real
+trigger is an incoming notification.
 
 ## Demo
 
@@ -58,7 +58,7 @@ crates/
   ledger-core/     pure Rust: parser, categoriser, domain types (zero dependencies)
   ledger-worker/   Apalis worker + SQLite ledger + Rivium App + laptop CLI
   ledger-jni/      cdylib: Rivium's five-method ABI + nativeEnqueue/nativeStats
-android/           Kotlin app: listener, widget, result notification, JNI bridge
+android/           Kotlin app: Compose UI, listener, widget, result notification, JNI bridge
 docs/              DEVICE_TEST.md
 ```
 
@@ -110,15 +110,15 @@ keeps a job in flight for the persistence scenario below.
 ### Tests
 
 ```sh
-cargo test --workspace     # 58 tests: parser fixtures, dedup, retries, orphan recovery
+cargo test --workspace     # 61 tests: parser fixtures, dedup, retries, orphan recovery
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
 ```
 
 ## Run on Android
 
-Toolchain used (all pinned, see the table below): JDK 17, Android SDK platform 35,
-build-tools 35, NDK 27.2.12479018, `cargo-ndk` 4.1.2, Gradle 8.14.6.
+Toolchain used (all pinned, see the table below): JDK 17, Android SDK platform 36,
+build-tools 36.0.0, NDK 27.2.12479018, `cargo-ndk` 4.1.2, Gradle 8.14.6.
 
 ```sh
 # 1. Cross-compile the Rust library into the app (arm64 phone + x86_64 emulator).
@@ -138,12 +138,18 @@ The Gradle build needs `android/local.properties` with `sdk.dir=/path/to/Android
 
 In the app:
 
-1. Open **pocket-ledger**, tap **Grant Notification Access** and enable the listener
-   (or grant it over adb, see below).
+1. Open **pocket-ledger** and tap **Enable** on the notification-access banner (or grant
+   it over adb, see below).
 2. Add the **pocket-ledger** widget to the home screen.
-3. Tap **Debug: enqueue a sample M-Pesa message** to check the pipeline, then send a
-   real notification (see below) and watch the widget update without opening the app.
-   **Debug: stop the Rust service** exists so on-demand start can be demonstrated.
+3. Watch confirmations land: the home screen lists them, the widget and the result
+   notification update without opening the app.
+
+The home screen is the consumer view: today's spend, today's income, and the recent
+confirmations with category and time. The **i** button opens **Diagnostics**, which keeps
+the technical surface out of the way: queue counters, **Send a test message**,
+**Notification access settings**, and **Stop the background service** (so on-demand start
+can be demonstrated). The screen polls `stats` only while it is visible (every 2.5 s, or
+every 0.8 s while jobs are in flight).
 
 Granting Notification Access and sending a notification over adb, exactly as tested:
 
@@ -152,8 +158,9 @@ Granting Notification Access and sending a notification over adb, exactly as tes
 adb shell cmd notification allow_listener com.pocketledger/com.pocketledger.MpesaListener 0
 
 # quote the whole device command; without the single quotes the body is truncated
-# and the listener (correctly) rejects it as not M-Pesa shaped. The code must be
-# 3 letters + 7 alphanumerics.
+# and the listener (correctly) rejects it as not M-Pesa shaped. A code is exactly
+# 2 letters + 8 alphanumerics and must contain a digit, so both the synthetic
+# SJA1B2C3D4 (used in the device test) and a real-looking SJ41H2K9LM pass.
 adb shell "cmd notification post -t 'M-PESA' mpesa 'SJA1B2C3D4 Confirmed. Ksh350.00 paid to JAVA HOUSE. on 5/10/26 at 1:00 PM. New M-PESA balance is Ksh684.56. Transaction cost, Ksh0.00.'"
 ```
 
@@ -215,7 +222,9 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 - Fixtures are synthetic; the parser follows the message bodies they contain. Real
   M-Pesa wording varies slightly by release, and the fixture headers themselves had one
   internal disagreement (withdraw), which is documented rather than hidden in
-  `crates/ledger-core/tests/fixtures.rs`.
+  `crates/ledger-core/tests/fixtures.rs`. Transaction codes are accepted as two leading
+  letters plus eight alphanumerics containing at least one digit (so `SJ41H2K9LM` and
+  the synthetic `SJA1B2C3D4` both parse, while `WITHDRAWAL` does not).
 - The message timestamp is interpreted as East Africa Time (UTC+3) because it has no
   zone in the text; messages from another zone would land on the wrong day.
 - Startup recovery assumes one worker process per device. Running the laptop CLI
@@ -225,6 +234,9 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 - The Android result notification is posted by Kotlin polling `stats` for up to 5
   seconds after enqueue, not by a native callback; a native completion callback is the
   obvious next step.
+- The 0.2.0 UI depends on AndroidX Compose (BOM `2026.05.01`, i.e. Compose 1.11.x) and
+  `activity-compose` 1.12.4. Those are UI libraries only; the app still declares no
+  `INTERNET` permission, so nothing can phone home even in principle.
 - No release signing, no CI, no Play packaging: this is a challenge entry, not a store
   app.
 
@@ -234,6 +246,7 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 - Monthly summary screen and a per-category breakdown.
 - Re-process the `unparsed` table from a debug screen after the parser improves.
 - Export to CSV through the system file picker (still no network).
+- Re-record `media/demo.gif` with the 0.2.0 home screen (the current GIF shows 0.1.0).
 
 ## Versions used (pinned)
 
@@ -252,8 +265,10 @@ parsing and never stored; a stalled message keeps its raw text only in the local
 | Android Gradle Plugin | 8.13.2 |
 | Kotlin | 2.2.21 |
 | Gradle | 8.14.6 |
-| Android compileSdk / targetSdk / minSdk | 35 / 35 / 26 |
-| Android build-tools / NDK / platform-tools | 35.0.0 / 27.2.12479018 / 37.0.1 |
+| Android compileSdk / targetSdk / minSdk | 36 / 35 / 26 |
+| Android build-tools / NDK / platform-tools | 36.0.0 / 27.2.12479018 / 37.0.1 |
+| AndroidX Compose BOM | 2026.09.00 |
+| `androidx.activity:activity-compose` | 1.13.0 |
 | Test device | Samsung SM-A546U1, Android 16 (SDK 36), arm64-v8a |
 
 ## Real phone test notes (bonus)

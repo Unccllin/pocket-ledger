@@ -80,6 +80,20 @@ concatenated segments rather than one take.
   orphan-requeue query joins on, so `kill -9` recovery had to be implemented in
   application code. Worth documenting for anyone pairing Apalis with an embedded host.
 
+## Version 0.2.0 (UI pass) — build-verified, not device-verified
+
+The log above was recorded against 0.1.0. Version 0.2.0 replaces the debug-only
+`LinearLayout` screen with a Compose home screen (today's spend and income, recent
+confirmations) plus a Diagnostics screen, restyles the widget, and widens the M-Pesa
+code shape. At the time of writing no device was attached, so the new screens have been
+compiled and packaged into the debug APK but not looked at on the phone. The pipeline
+(notification → JNI → Apalis → ledger → widget) is unchanged, so the device results
+above still describe the backend and the listener. The next device session should:
+
+1. install the 0.2.0 APK, confirm the home screen renders with existing rows,
+2. confirm the widget shows the new `SPENT TODAY` card,
+3. re-run the force-stop scenario and the airplane-mode demo recording.
+
 ## Not tested
 
 - Incoming M-Pesa SMS from the real Safaricom M-Pesa shortcode (the phone has no M-Pesa
@@ -87,3 +101,4 @@ concatenated segments rather than one take.
   which goes through the same `NotificationListenerService` path as an app notification.
 - Behaviour under Doze / aggressive OEM battery savers beyond a normal force-stop.
 - A release build (debug APK only).
+- The 0.2.0 Compose screens and widget refresh on a physical device (see above).

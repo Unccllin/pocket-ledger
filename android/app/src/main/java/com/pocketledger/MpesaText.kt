@@ -3,8 +3,10 @@ package com.pocketledger
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import org.json.JSONObject
-import java.util.Locale
+import com.pocketledger.ui.LedgerRowModel
+import com.pocketledger.ui.categoryLabel
+import com.pocketledger.ui.money
+import com.pocketledger.ui.parseStats
 
 /**
  * M-Pesa-shaped text handling and the result notification.
@@ -14,22 +16,21 @@ import java.util.Locale
  * actually means.
  */
 object MpesaText {
-    private val CODE = Regex("\\b[A-Z]{3}[A-Z0-9]{7}\\b")
+    private val CODE = Regex("\\b[A-Z]{2}[A-Z0-9]{8}\\b")
     private const val CHANNEL_ID = "ledger-results"
 
+    /**
+     * Mirrors the Rust shape rule: ten characters, two leading letters, and at
+     * least one digit (so the word `WITHDRAWAL` is not mistaken for a code).
+     * Ambiguity here is harmless anyway: Rust is the authority.
+     */
     fun looksLike(text: String): Boolean =
-        text.contains("confirmed", ignoreCase = true) && CODE.containsMatchIn(text)
+        text.contains("confirmed", ignoreCase = true) && codeOf(text) != null
 
-    fun codeOf(text: String): String? = CODE.find(text)?.value
-
-    /** Formats integer cents as `Ksh1,234.56` without floating point. */
-    fun money(cents: Long): String {
-        val sign = if (cents < 0) "-" else ""
-        val abs = Math.abs(cents)
-        val whole = abs / 100
-        val fraction = (abs % 100).toString().padStart(2, '0')
-        return String.format(Locale.US, "%sKsh%,d.%s", sign, whole, fraction)
-    }
+    fun codeOf(text: String): String? =
+        CODE.findAll(text)
+            .map { it.value }
+            .firstOrNull { code -> code.any(Char::isDigit) }
 
     /**
      * Waits (briefly) for the queued code to reach the ledger, then tells the
@@ -38,42 +39,42 @@ object MpesaText {
     fun announceResult(context: Context, code: String) {
         val row = waitForRow(context, code)
         LedgerWidget.refresh(context)
-        val entry = row ?: return
-        val kind = entry.optString("kind")
-        val name = entry.optString("counterparty")
-        val cents = entry.optLong("amount_cents")
-        val title = if (kind == "received") {
-            "Received ${money(cents)} from $name"
+        val match = row ?: return
+
+        val counterparty = match.counterparty
+        val category = categoryLabel(match.category)
+        val cents = match.amountCents
+
+        val title = if (match.isReceived) {
+            "Received Ksh${money(cents)}"
         } else {
-            "Spent ${money(cents)} at $name"
+            "Spent Ksh${money(cents)}"
         }
-        post(context, title, entry.optString("category"))
+        post(context, title, "$counterparty \u00B7 $category")
     }
 
-    private fun waitForRow(context: Context, code: String): JSONObject? {
+    private fun waitForRow(context: Context, code: String): LedgerRowModel? {
         repeat(20) {
-            val stats = runCatching { JSONObject(LedgerRuntime.stats(context)) }.getOrNull()
-            val latest = stats?.optJSONArray("latest")
-            if (latest != null) {
-                for (index in 0 until latest.length()) {
-                    val row = latest.optJSONObject(index) ?: continue
-                    if (row.optString("code") == code) return row
-                }
-            }
+            val stats = runCatching { parseStats(LedgerRuntime.stats(context)) }.getOrNull()
+            stats?.latest?.firstOrNull { it.code == code }?.let { return it }
             Thread.sleep(250)
         }
         return null
     }
 
-    private fun post(context: Context, title: String, category: String) {
+    private fun post(context: Context, title: String, detail: String) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Ledger results", NotificationManager.IMPORTANCE_DEFAULT)
+            NotificationChannel(
+                CHANNEL_ID,
+                "Transaction results",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            )
         )
         val notification = android.app.Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_more)
             .setContentTitle(title)
-            .setContentText("Category: $category")
+            .setContentText(detail)
             .setAutoCancel(true)
             .build()
         manager.notify(title.hashCode(), notification)
