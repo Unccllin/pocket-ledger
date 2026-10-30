@@ -1,0 +1,29 @@
+{
+  "id": "becb7ea59",
+  "name": "Download Gradle 8.14.6",
+  "command": "mkdir -p ~/.local/gradle && cd /tmp && curl -sSL -o gradle.zip https://services.gradle.org/distributions/gradle-8.14.6-bin.zip && rm -rf ~/.local/gradle/8.14.6 && unzip -q gradle.zip -d ~/.local/gradle && ~/.local/gradle/gradle-8.14.6/bin/gradle --version",
+  "status": "failed",
+  "outputPath": ".pi/tasks/01a18b4a-df6d-75ba-a16d-43e6a511498b-927277/becb7ea59.output",
+  "cwd": "/home/cllin/pocket-ledger",
+  "startTime": 1793341690594,
+  "endTime": 1793341708844,
+  "exitCode": 1,
+  "signal": null,
+  "pid": 972789,
+  "bytesWritten": 185,
+  "isAgent": false,
+  "surviveReload": false,
+  "error": "Exited with code 1",
+  "notified": true,
+  "notifyOnCompletion": true,
+  "triggerOnCompletion": true,
+  "timeoutSeconds": 1200,
+  "shellPolicy": {
+    "policy": "inherit",
+    "executable": "/bin/bash",
+    "argvPrefix": [
+      "-c"
+    ],
+    "dialect": "bash"
+  }
+}

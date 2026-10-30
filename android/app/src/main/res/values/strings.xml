@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">pocket-ledger</string>
+    <string name="listener_label">pocket-ledger M-Pesa listener</string>
+    <string name="status_starting">Starting…</string>
+    <string name="grant_access">Grant Notification Access</string>
+    <string name="debug_enqueue">Debug: enqueue a sample M-Pesa message</string>
+    <string name="refresh">Refresh</string>
+    <string name="stop_service">Debug: stop the Rust service</string>
+    <string name="service_stopped">Rivium service stopped</string>
+    <string name="widget_today">Today: %1$s</string>
+    <string name="widget_queue">Queue: %1$d waiting</string>
+    <string name="widget_queue_failed">Queue: %1$d waiting, %2$d failed</string>
+    <string name="widget_idle">Queue: empty</string>
+    <string name="widget_offline">pocket-ledger</string>
+    <string name="widget_description">Today\'s M-Pesa spend and queued jobs</string>
+</resources>

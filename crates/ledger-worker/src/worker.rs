@@ -60,7 +60,10 @@ pub async fn run_worker<F>(
 where
     F: Future<Output = ()> + Send + 'static,
 {
-    let backend = SqliteStorage::<ParseTransaction>::new(&pool);
+    // Poll promptly: a confirmation should reach the widget in well under a
+    // second, not on the backend's slow default cadence.
+    let backend = SqliteStorage::<ParseTransaction>::new(&pool)
+        .poll_with_interval(Duration::from_millis(250));
     let worker = WorkerBuilder::new(worker_instance_name())
         .backend(backend)
         .data(pool.clone())

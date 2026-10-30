@@ -2,8 +2,7 @@
 # dependency to an exact version (e.g. apalis = "=x.y.z") after reading current docs.
 [workspace]
 resolver = "2"
-members = ["crates/ledger-core", "crates/ledger-worker"]
-# Add later: "crates/ledger-jni"
+members = ["crates/ledger-core", "crates/ledger-worker", "crates/ledger-jni"]
 
 [workspace.package]
 edition = "2021"

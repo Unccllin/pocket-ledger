@@ -6,13 +6,24 @@ rust-version.workspace = true
 description = "Apalis worker, SQLite storage and CLI for pocket-ledger"
 publish = false
 
+# The process host is a laptop-only concern. Android links the embedded host
+# through rivium-jni and must not pull in the process host's signal handling.
+[features]
+default = ["process-host"]
+process-host = ["rivium-host/process"]
+
+[[bin]]
+name = "ledger-worker"
+path = "src/main.rs"
+required-features = ["process-host"]
+
 [dependencies]
 ledger-core = { path = "../ledger-core" }
 # Pinned exactly: both libraries are pre-1.0 and change between releases.
 apalis = "=1.0.0"
 apalis-sqlite = "=1.0.0"
 rivium = { version = "=0.2.0", default-features = false, features = ["rt"] }
-rivium-host = { version = "=0.2.0", default-features = false, features = ["process"] }
+rivium-host = { version = "=0.2.0", default-features = false }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
 sqlx = { version = "=0.9.0", default-features = false, features = ["sqlite", "runtime-tokio"] }

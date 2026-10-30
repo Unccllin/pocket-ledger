@@ -1,0 +1,28 @@
+{
+  "id": "b28e05fc7",
+  "name": "Build debug APK (retry)",
+  "command": "cat > /tmp/build_apk.sh <<'SCRIPT'\nset -euo pipefail\ncd /home/cllin/pocket-ledger/android\nexport JAVA_HOME=\"$HOME/.local/jdk17\"\nexport PATH=\"$JAVA_HOME/bin:$PATH\"\nexport ANDROID_HOME=\"$HOME/android-sdk\"\nexport ANDROID_SDK_ROOT=\"$ANDROID_HOME\"\necho \"== jniLibs ==\"\nls -la app/src/main/jniLibs/*/ || { echo \"missing .so\"; exit 1; }\nif [ ! -x gradlew ]; then\n  echo \"== generating Gradle wrapper ==\"\n  \"$HOME/.local/gradle/gradle-8.14.6/bin/gradle\" wrapper --gradle-version 8.14.6 --distribution-type bin -q\nfi\necho \"== assembleDebug ==\"\n./gradlew assembleDebug 2>&1 | tail -45\necho \"== APKs ==\"\nfind app/build/outputs -name \"*.apk\" -exec ls -la {} \\;\necho \"APK BUILD DONE\"\nSCRIPT\nbash /tmp/build_apk.sh 2>&1",
+  "status": "completed",
+  "outputPath": ".pi/tasks/01a18b4a-df6d-75ba-a16d-43e6a511498b-927277/b28e05fc7.output",
+  "cwd": "/home/cllin/pocket-ledger",
+  "startTime": 1793342965319,
+  "endTime": 1793343054647,
+  "exitCode": 0,
+  "signal": null,
+  "pid": 982363,
+  "bytesWritten": 2158,
+  "isAgent": false,
+  "surviveReload": false,
+  "notified": true,
+  "notifyOnCompletion": true,
+  "triggerOnCompletion": true,
+  "timeoutSeconds": 2700,
+  "shellPolicy": {
+    "policy": "inherit",
+    "executable": "/bin/bash",
+    "argvPrefix": [
+      "-c"
+    ],
+    "dialect": "bash"
+  }
+}

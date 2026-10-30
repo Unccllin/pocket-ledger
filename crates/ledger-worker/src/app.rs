@@ -5,7 +5,8 @@
 //! Android app. Rivium owns start-up, readiness and shutdown; this module only
 //! says what to do in each phase.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use rivium::{service, Error, Kind, Result, Service};
 use rivium_host::{App, Context};
@@ -23,6 +24,19 @@ pub struct LedgerConfig {
     /// Kept configurable so the persistence scenario can keep a job in flight
     /// while the process is killed: `--set delay_ms=3000`.
     pub delay_ms: u64,
+}
+
+/// Working directory of the running service (`--root`), recorded at start-up.
+///
+/// The JNI bridge needs it to open the same `ledger.db` when Kotlin calls
+/// `enqueue`/`stats`, without duplicating Rivium's argument parsing. This is the
+/// directory, not the database file: callers join `ledger.db` themselves.
+static STARTED_ROOT: OnceLock<PathBuf> = OnceLock::new();
+
+/// The working directory of the running service, if it has started.
+#[must_use]
+pub fn started_root() -> Option<&'static Path> {
+    STARTED_ROOT.get().map(PathBuf::as_path)
 }
 
 /// The pocket-ledger application.
@@ -52,6 +66,9 @@ impl App for LedgerApp {
                 let recovered = store::recover_orphans(&pool)
                     .await
                     .map_err(|error| service_error("recovering orphaned jobs", &db_path, error))?;
+                if let Some(root) = db_path.parent() {
+                    let _ = STARTED_ROOT.set(root.to_path_buf());
+                }
                 eprintln!(
                     "ledger service ready: db={} recovered_jobs={recovered}",
                     db_path.display()

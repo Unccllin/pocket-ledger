@@ -26,7 +26,7 @@ pub mod store;
 pub mod worker;
 
 pub use apalis_sqlite::SqlitePool;
-pub use app::{LedgerApp, LedgerConfig};
+pub use app::{started_root, LedgerApp, LedgerConfig};
 pub use job::ParseTransaction;
 pub use store::{
     db_path, eat_day_bounds, enqueue, format_eat, open, queue_name, recover_orphans, stats,
