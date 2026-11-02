@@ -188,6 +188,46 @@ Installed 0.3.1 over 0.3.0 with the same key (data kept). `uiautomator` shows no
 `Send a test message` row and `Worker / pocket-ledger 0.3.1`; `media/ui/settings.png` was
 recaptured from this build.
 
+### 0.3.2/0.3.3: the listener went quiet after a day
+
+Symptom on the owner's phone: capture worked on day one, then no new ledger rows for
+days. Diagnosis, in order:
+
+- The parser was not at fault: the real SMS shape was rebuilt locally and parsed
+  (`BENSON WAWERU`, Ksh 500, balance Ksh 559.56).
+- A synthetic notification was processed with the app killed, so the pipeline worked.
+- The real 07:26 SMS produced no result: the 07:53 result notification read
+  "3% of daily limit" (Ksh 125, the synthetic only). The 500 was never stored.
+- System logs at 07:53 showed the listener being bound from scratch
+  (`Start proc … for service MpesaListener` → `listener connected`), i.e. it had not
+  been connected while the phone sat idle.
+- The app was in Android's Rare standby bucket (10) and not power-whitelisted.
+
+Fixes shipped in 0.3.3:
+
+- `onListenerDisconnected` requests a rebind instead of waiting for the next post.
+- On every listener connect, the currently active notifications are scanned and any
+  M-Pesa confirmation is re-enqueued (no result notification): the transaction code is
+  the idempotency key, so a replay cannot duplicate a row.
+- The listener also reads `EXTRA_MESSAGES` (Google Messages bundles) and
+  `EXTRA_TEXT_LINES`, and logs why a notification was ignored.
+- The app was added to the device-idle whitelist; the body was aligned to 0.3.3 too.
+
+Live verification on 2 Nov, with the app idle:
+
+```
+08:11:45  nativeStart returned 0
+08:11:45  enqueue response: {"outcome":"enqueued","code":"UK24Q033D5"}
+08:11:46  notification: Spent Ksh 5 at Alex Mbugua · 3% of daily limit used
+08:18:12  listener connected
+08:18:13  catch-up scanned 5 active, recovered 1
+08:18:13  enqueue response: {"outcome":"enqueued","code":"SJ88K3L7NQ"}
+```
+
+Home afterwards: `Ksh 205` with rows for Ksh 125, 75 and 5. The 07:26 Ksh 500 message
+could not be recovered: its notification had already left the shade by the time catch-up
+ran, and the app has no SMS permission by design. Everything from that point is captured.
+
 ### Two bugs this pass found (and fixed)
 
 1. **The first-run screen never noticed access being granted.** The polling effect

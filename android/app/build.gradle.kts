@@ -30,8 +30,8 @@ android {
         // 35 keeps Android 15/16 behaviour opt-ins explicit; the UI is tested
         // on an Android 16 device.
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 6
+        versionName = "0.3.3"
         ndk {
             // Matches the cargo-ndk targets in the README.
             abiFilters += listOf("arm64-v8a", "x86_64")

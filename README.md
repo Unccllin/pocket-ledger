@@ -273,7 +273,11 @@ exist before any work starts and outlive the process. Two things make restarts s
    twice keeps exactly one queue row (`UNIQUE(job_type, idempotency_key)`), and the
    ledger insert is `INSERT ... ON CONFLICT(code) DO NOTHING`, so at-least-once
    execution still produces exactly one ledger row.
-2. **Startup recovery re-queues interrupted work.** Apalis' own orphan recovery relies
+2. **The listener heals itself.** Android can drop a notification-listener binding while
+   the app sits idle; 0.3.3 asks for a rebind, and on every reconnect it rescans the
+   notifications still in the shade and replays any M-Pesa confirmation (idempotent by
+   transaction code). The app also asks to be excluded from battery optimisation.
+3. **Startup recovery re-queues interrupted work.** Apalis' own orphan recovery relies
    on a `Workers` heartbeat table that this backend never populates, so `kill -9` would
    leave jobs reserved forever. On start-up the service sets every `Running`/`Queued`
    job for this queue back to `Pending` (single worker per device is the documented

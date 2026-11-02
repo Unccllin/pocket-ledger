@@ -1,6 +1,6 @@
 [package]
 name = "ledger-worker"
-version = "0.3.1"
+version = "0.3.3"
 edition.workspace = true
 rust-version.workspace = true
 description = "Apalis worker, SQLite storage and CLI for pocket-ledger"
