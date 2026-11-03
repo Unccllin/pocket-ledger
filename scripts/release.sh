@@ -73,11 +73,13 @@ echo "Building Rust libraries (arm64-v8a, x86_64)..."
 (cd "$ROOT" && cargo ndk -t arm64-v8a -t x86_64 \
     -o android/app/src/main/jniLibs build -p ledger-jni --release)
 
-echo "Building the signed APK..."
-(cd "$ROOT/android" && ./gradlew --quiet assembleRelease)
+echo "Building the signed Libre APK..."
+(cd "$ROOT/android" && ./gradlew --quiet assembleLibreRelease)
 
-APK="$ROOT/android/app/build/outputs/apk/release/app-release.apk"
+APK="$ROOT/android/app/build/outputs/apk/libre/release/app-libre-release.apk"
 [ -f "$APK" ] || die "no signed APK at $APK (did the signing config load?)"
+
+"$ROOT/scripts/check-libre-manifest.sh" "$APK"
 
 echo "Verifying signature..."
 "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" >/dev/null \

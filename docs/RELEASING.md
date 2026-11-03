@@ -4,7 +4,7 @@ Two channels ship from this repository:
 
 | Channel | What | Trigger |
 |---|---|---|
-| GitHub Releases | signed `pocket-ledger-<version>.apk` + `SHA256SUMS.txt` | pushing a `v<version>` tag, with the signing secrets configured |
+| GitHub Releases | signed Libre `pocket-ledger-<version>.apk` + `SHA256SUMS.txt` | pushing a `v<version>` tag, with the signing secrets configured |
 | GitHub Packages (`ghcr.io`) | the laptop CLI/worker as a container image, tagged `latest`, `X.Y.Z` and `X.Y` | every push to `master`, and every `v*` tag |
 
 Both workflows are in `.github/workflows/` (`release.yml`, `package.yml`). The
@@ -115,7 +115,8 @@ docker push ghcr.io/<owner>/pocket-ledger:<version>
 
 - [ ] `versionCode` incremented, `versionName` bumped, tag matches it
 - [ ] fmt / clippy / tests / `assembleDebug` green
-- [ ] `scripts/release.sh` verified and installed on a device
+- [ ] `scripts/release.sh` verified and installed on a device (it builds
+      `assembleLibreRelease` and asserts the Libre APK has no `INTERNET`)
 - [ ] `release` workflow produced the APK + `SHA256SUMS.txt`
 - [ ] `package` workflow produced the image tags
 - [ ] Install notes in `docs/INSTALL.md` still accurate

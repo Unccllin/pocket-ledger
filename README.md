@@ -2,6 +2,11 @@
 
 > Rivium + Apalis pocket backend challenge entry: an offline-first M-Pesa auto-ledger.
 
+**Editions:** the APK people install is **Libre** (`com.pocketledger`, no `INTERNET`
+permission at all). **Plus** (`com.pocketledger.plus`, opt-in E2EE sync and billing) is a
+separate package and is still in development; both build from the same source with Gradle
+product flavors.
+
 **Install:** [unccllin.github.io/pocket-ledger](https://unccllin.github.io/pocket-ledger/) — one
 download button, the exact steps past Play Protect, and a QR for phones. The APK itself is
 on [Releases](https://github.com/Unccllin/pocket-ledger/releases/latest).
@@ -217,10 +222,10 @@ cargo ndk -t arm64-v8a -t x86_64 \
   -o android/app/src/main/jniLibs build -p ledger-jni --release
 
 # 2. Build the APK.
-cd android && ./gradlew assembleDebug
+cd android && ./gradlew assembleLibreDebug
 
 # 3. Install on a connected device.
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/libre/debug/app-libre-debug.apk
 ```
 
 The Gradle build needs `android/local.properties` with `sdk.dir=/path/to/Android/Sdk`

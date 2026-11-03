@@ -38,6 +38,20 @@ android {
         }
     }
 
+    // Two editions ship from one codebase. Libre is the privacy edition and must
+    // never declare INTERNET; Plus is the only one allowed to add network code.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("libre") {
+            dimension = "edition"
+            applicationId = "com.pocketledger"
+        }
+        create("plus") {
+            dimension = "edition"
+            applicationId = "com.pocketledger.plus"
+        }
+    }
+
     signingConfigs {
         if (releaseStoreFile != null) {
             create("release") {

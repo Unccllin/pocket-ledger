@@ -99,23 +99,33 @@ jobs:
             echo "PL_KEY_PASSWORD=$KEY_PASSWORD"
           } >> "$GITHUB_ENV"
 
-      - name: Build the APK
+      - name: Build the Libre APK
         working-directory: android
-        run: ./gradlew --stacktrace assembleRelease
+        run: ./gradlew --stacktrace assembleLibreRelease
+
+      - name: Libre declares no INTERNET
+        run: |
+          APK=android/app/build/outputs/apk/libre/release/app-libre-release.apk
+          if [ -f "$APK" ]; then
+            scripts/check-libre-manifest.sh "$APK"
+          else
+            scripts/check-libre-manifest.sh \
+              android/app/build/outputs/apk/libre/release/app-libre-release-unsigned.apk
+          fi
 
       - name: Collect APK and checksums
         id: apk
         run: |
           VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' \
             android/app/build.gradle.kts | head -1)
-          RELEASE=android/app/build/outputs/apk/release
-          APK="$RELEASE/app-release.apk"
+          RELEASE=android/app/build/outputs/apk/libre/release
+          APK="$RELEASE/app-libre-release.apk"
           mkdir -p dist
           if [ -f "$APK" ]; then
             cp "$APK" "dist/pocket-ledger-${VERSION}.apk"
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
-            UNSIGNED="$RELEASE/app-release-unsigned.apk"
+            UNSIGNED="$RELEASE/app-libre-release-unsigned.apk"
             NAME="pocket-ledger-${VERSION}-unsigned.apk"
             cp "$UNSIGNED" "dist/$NAME"
             echo "signed=false" >> "$GITHUB_OUTPUT"

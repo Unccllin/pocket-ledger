@@ -9,6 +9,10 @@ app that has no `INTERNET` permission, so there is nothing for a store listing t
 add. You install a signed APK, the same way as any other Android app from
 outside Play.
 
+This guide installs the **Libre** edition (`com.pocketledger`), which has no `INTERNET`
+permission. The Plus edition (opt-in encrypted sync, separate package
+`com.pocketledger.plus`) is not released yet.
+
 ## What you need
 
 | | |
